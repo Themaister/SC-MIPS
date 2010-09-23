@@ -4,6 +4,10 @@
 -- single-cycle mips processor - vhdl
 --------------------------------------------------
 
+--------------------------------------------------
+-- Extensions by Hans-Kristian Arntzen
+--------------------------------------------------
+
 library ieee; use ieee.std_logic_1164.all;
 
 entity mipssingle is -- single cycle mips processor
