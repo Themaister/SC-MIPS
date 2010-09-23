@@ -1,86 +1,84 @@
 --------------------------------------------------
 -- top.vhd
--- Sarah_Harris@hmc.edu 27 May 2007
--- Top-level module for MIPS single-cycle
+-- sarah_harris@hmc.edu 27 may 2007
+-- top-level module for mips single-cycle
 -- processor
 --------------------------------------------------
 
-library IEEE; 
-use IEEE.STD_LOGIC_1164.all; use IEEE.STD_LOGIC_UNSIGNED.all;
+library ieee; 
+use ieee.std_logic_1164.all; use ieee.std_logic_unsigned.all;
 
 entity top is -- top-level design for testing
-  port(KEY:           in    STD_LOGIC_VECTOR(1 downto 0);
-       CLOCK_50:      in    std_logic;
-       readdata:             inout STD_LOGIC_VECTOR(31 downto 0);
-       writedata, dataadr:   inout STD_LOGIC_VECTOR(31 downto 0);
-       memwrite:             inout STD_LOGIC;
-       HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7 : out std_logic_vector(6 downto 0);
-       LEDR : out std_logic_vector(15 downto 0);
-       SW: in std_logic_vector(15 downto 0);
-       LEDG : out std_logic_vector(7 downto 0)
-       );
+   port(key:           in    std_logic_vector(1 downto 0);
+        clock_50:      in    std_logic;
+        readdata:             inout std_logic_vector(31 downto 0);
+   writedata, dataadr:   inout std_logic_vector(31 downto 0);
+   memwrite:             inout std_logic;
+   hex0, hex1, hex2, hex3, hex4, hex5, hex6, hex7 : out std_logic_vector(6 downto 0);
+   ledr : out std_logic_vector(15 downto 0);
+   sw: in std_logic_vector(15 downto 0);
+   ledg : out std_logic_vector(7 downto 0)
+);
 end;
 
 architecture synth of top is
-  component mipssingle 
-    port(clk, reset:        in  STD_LOGIC;
-         pc:                inout STD_LOGIC_VECTOR(31 downto 0);
-         instr:             in  STD_LOGIC_VECTOR(31 downto 0);
-         memwrite:          out STD_LOGIC;
-         aluresult, writedata: inout STD_LOGIC_VECTOR(31 downto 0);
-         readdata:          in  STD_LOGIC_VECTOR(31 downto 0));
-  end component;
+   component mipssingle 
+      port(clk, reset:        in  std_logic;
+           pc:                inout std_logic_vector(31 downto 0);
+           instr:             in  std_logic_vector(31 downto 0);
+           memwrite:          out std_logic;
+      aluresult, writedata: inout std_logic_vector(31 downto 0);
+      readdata:          in  std_logic_vector(31 downto 0));
+   end component;
 
-  component dmem
-    port(clk, we:  in  STD_LOGIC;
-         a, wd:    in  STD_LOGIC_VECTOR(31 downto 0);
-         rd:       out STD_LOGIC_VECTOR(31 downto 0);
-         switch1, switch2, switch3, switch4 : in std_logic_vector(3 downto 0);
-		led1 : out std_logic_vector(7 downto 0));
-  end component;
-  
+   component dmem
+      port(clk, we:  in  std_logic;
+      a, wd:    in  std_logic_vector(31 downto 0);
+      rd:       out std_logic_vector(31 downto 0);
+      switch1, switch2, switch3, switch4 : in std_logic_vector(3 downto 0);
+      led1 : out std_logic_vector(7 downto 0));
+   end component;
+
    component insmem is
-	port (
-		a : in std_logic_vector(31 downto 0);
-		rd : out std_logic_vector(31 downto 0)
-	);
-	end component;
-	
-	component clock_1hz is
-	port (
-		clk : in std_logic;
-		clk_out : out std_logic
-	);
-	end component;
-		
-  
-	component ssd_32bit IS
-	  PORT(ssd_in_32bit   : IN STD_LOGIC_VECTOR (31 DOWNTO 0);
-		   ssd0, ssd1, ssd2, ssd3, ssd4, ssd5, ssd6, ssd7  : OUT STD_LOGIC_VECTOR (6 DOWNTO 0)); 
-	END component;
+      port (
+              a : in std_logic_vector(31 downto 0);
+              rd : out std_logic_vector(31 downto 0)
+           );
+   end component;
+   
+   component clock_1hz is
+      port (
+              clk : in std_logic;
+              clk_out : out std_logic
+           );
+   end component;
 
-  signal pc, instr:    STD_LOGIC_VECTOR(31 downto 0);
-  signal internal_clk: std_logic;
-  
+   
+   component ssd_32bit is
+   port(ssd_in_32bit   : in std_logic_vector (31 downto 0);
+   ssd0, ssd1, ssd2, ssd3, ssd4, ssd5, ssd6, ssd7  : out std_logic_vector (6 downto 0)); 
+   end component;
+
+   signal pc, instr:    std_logic_vector(31 downto 0);
+   signal internal_clk: std_logic;
+
 begin
   -- instantiate processor and memories
-  
-  --internal_clk <= KEY(0);
-  
-  mips1: mipssingle port map(internal_clk, not KEY(1), pc, instr, memwrite, dataadr, 
-                       writedata, readdata);
-  dmem1: dmem port map(internal_clk, memwrite, dataadr, writedata, readdata, 
-		SW(3 downto 0), SW(7 downto 4), SW(11 downto 8), SW(15 downto 12),
-		LEDR(7 downto 0)
- );
- 
-  insmem1: insmem port map (pc, instr);
-  ssd_32bit1: ssd_32bit port map(instr, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7);
-  clock_1hz1: clock_1hz port map(CLOCK_50, internal_clk);
-  
-  --LEDR(3 downto 0) <= pc(5 downto 2);
-  --LEDG(3 downto 0) <= writedata(3 downto 0);
-  LEDG <= pc(7 downto 0);
-  
+   
+  --internal_clk <= key(0);
+
+   mips1: mipssingle port map(internal_clk, not key(1), pc, instr, memwrite, dataadr, 
+   writedata, readdata);
+   dmem1: dmem port map(internal_clk, memwrite, dataadr, writedata, readdata, 
+   sw(3 downto 0), sw(7 downto 4), sw(11 downto 8), sw(15 downto 12),
+   ledr(7 downto 0)
+);
+
+insmem1: insmem port map (pc, instr);
+ssd_32bit1: ssd_32bit port map(instr, hex0, hex1, hex2, hex3, hex4, hex5, hex6, hex7);
+clock_1hz1: clock_1hz port map(clock_50, internal_clk);
+
+ledg <= pc(7 downto 0);
+
 end;
 
