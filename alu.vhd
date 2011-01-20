@@ -23,6 +23,7 @@ entity alu is
    zero:       inout    std_logic;  --blez
    ltez:       out      std_logic; --blez
    jr:         out      std_logic; --jr
+   link:       out      std_logic; --jalr
    write_reg:  out      std_logic
 ); --mul/div nor jr 
 end;
@@ -31,6 +32,7 @@ architecture synth of alu is
    signal s, bout:      std_logic_vector(31 downto 0);
    signal mul_div_write_op : std_logic;
    signal jump_reg : std_logic;
+   signal can_link : std_logic;
 
    signal we_hi, we_lo, read_hi_lo, read_mul_div_reg : std_logic;
    signal alu_res : std_logic_vector(63 downto 0); -- mult :3
@@ -137,6 +139,9 @@ end process;
  zero <= '1' when (alu_res(31 downto 0) = x"00000000") else '0'; -- beq/bne
  jump_reg <= '1' when (f(3 downto 0) = "1000") else '0';
  jr <= jump_reg;
+ can_link <= '0' when (a = x"00000000") else '1';
+ link <= jr and can_link;
+ 
 
  mul_div_write_op <= f(6);
  we_hi <= f(6) and (f(5) nand f(4));
@@ -144,7 +149,7 @@ end process;
  read_mul_div_reg <= f(5) or f(4);
  read_hi_lo <= f(4);
 
- write_reg <= jump_reg nor mul_div_write_op;
+ write_reg <= (jump_reg and not can_link) nor mul_div_write_op;
  ltez <= zero or s(31);  -- blez/bgtz
 
 end;

@@ -240,6 +240,8 @@ begin
            when "000111" => alucontrol <= "0001110"; -- srav
                                                      -- end shifting
            when "001000" => alucontrol <= "0001000"; -- jr
+           when "001001" => alucontrol <= "0001000"; -- jalr, getting advanced here! 
+           -- We will deduce if we have to link from value in srcA. Linking to address 0 is undefined.
            when "010000" => alucontrol <= "0010000"; -- mfhi
            when "010001" => alucontrol <= "1000000"; -- mthi
            when "010010" => alucontrol <= "0100000"; -- mflo
@@ -284,6 +286,7 @@ architecture struct of datapath is
    zero: inout  std_logic;  --blez
    ltez: out    std_logic; --blez
    jr: out std_logic; --jr
+   link: out std_logic; -- jalr
    write_reg: out std_logic); --write mul/div op or jr 
    end component;
    component regfile
@@ -334,6 +337,7 @@ architecture struct of datapath is
    signal half: std_logic_vector(15 downto 0); --lh
    signal signhalf, memdata: std_logic_vector(31 downto 0); --lh
    signal jr: std_logic; --jr
+   signal alu_link: std_logic; --jalr
    signal alu_can_write_reg: std_logic;
    signal mask_reg: std_logic_vector(4 downto 0); --bltz/bgez
 begin
@@ -356,7 +360,8 @@ begin
    writeresult,  --jal
    srca, writedata);
 
-   ramux: mux2 generic map(32)  port map(result, pcplus4, jal, 
+   -- With branch delay slot later, we need pcplus8 :D
+   ramux: mux2 generic map(32)  port map(result, pcplus4, jal or alu_link, -- Direct JAL or ALU initiated link?
    writeresult);  -- jal
 
    wrmux: mux3 generic map(5) port map(instr(20 downto 16), 
@@ -382,7 +387,7 @@ begin
    mainalu: alu port map(clk, srca, srcb, alucontrol, 
    instr(10 downto 6),  --lui
    aluresult, zero,     --blez
-   ltez, jr, alu_can_write_reg);
+   ltez, jr, alu_link, alu_can_write_reg);
    
    rt0 <= instr(16); --blezgtz
 end;
