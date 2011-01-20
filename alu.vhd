@@ -82,9 +82,9 @@ process (f, a, bout, s) begin
       when "0000001" => 
          alu_res <= x"00000000" & (a or bout);
       when "0001001" =>
-         alu_res <= x"00000000" & (a xor bout);
+         alu_res <= x"00000000" & (a xor (not bout));
       when "0001111" =>
-         alu_res <= x"00000000" & (a nor bout);
+         alu_res <= x"00000000" & (a nor (not bout));
       when "0001010" => 
          alu_res <= x"00000000" & s;
       when "0000010" =>
@@ -118,10 +118,11 @@ process (f, a, bout, s) begin
            alu_res <=
              a * b;
 
-       when "1110000" => 
+       --when "1110000" => 
           --alu_res(31 downto 0) <= a / b;
           --alu_res(63 downto 32) <= a mod b; doesn't synth, use some dummy stuff :d
-          alu_res <=  (a mod b) & x"01010101";
+          --alu_res <=  (a mod b) & x"01010101";
+          
 
        when "1000000" =>
           alu_res <= a & x"00000000";
@@ -133,7 +134,7 @@ process (f, a, bout, s) begin
    end case;
 end process;
 
- zero <= '1' when (alu_res(31 downto 0) = x"00000000") else '0';
+ zero <= '1' when (alu_res(31 downto 0) = x"00000000") else '0'; -- beq/bne
  jump_reg <= '1' when (f(3 downto 0) = "1000") else '0';
  jr <= jump_reg;
 
@@ -144,7 +145,7 @@ end process;
  read_hi_lo <= f(4);
 
  write_reg <= jump_reg nor mul_div_write_op;
- ltez <= zero or s(31);  -- blez
+ ltez <= zero or s(31);  -- blez/bgtz
 
 end;
 

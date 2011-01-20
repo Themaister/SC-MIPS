@@ -18,7 +18,8 @@ entity dmem is -- data memory
    a, wd:    in std_logic_vector(31 downto 0);
    rd:       out std_logic_vector(31 downto 0);
    switch1, switch2, switch3, switch4: in std_logic_vector(3 downto 0);
-   led1: out std_logic_vector(7 downto 0));
+   led1: out std_logic_vector(7 downto 0);
+   led2: out std_logic_vector(7 downto 0));
 end;
 
 architecture behave of dmem is
@@ -47,6 +48,7 @@ begin
 
   --memory mapping? :d
   led1 <= mem(4)(7 downto 0);
+  led2 <= mem(5)(7 downto 0);
 
   rd <= mem(conv_integer(a(7 downto 2)));
 end;
