@@ -33,6 +33,8 @@ architecture struct of mipssingle is
       ltez:               inout std_logic;                 --blez
       jal:                out std_logic;                    --jal
       lh:                 out std_logic;                   --lh
+      lb:                 out std_logic;                   --lb
+      lbhsign:            out std_logic;                   --lb/lh
       rt0:                in std_logic);                    --bltzgez
    end component;
    component datapath
@@ -50,6 +52,8 @@ architecture struct of mipssingle is
       ltez:              out std_logic;  --blez
       jal:               in  std_logic;  --jal
       lh:                in  std_logic; --lh
+      lb:                in  std_logic; --lb
+      lbhsign:           in  std_logic; --lb/--lh
       rt0:               out std_logic); --bltzgez  
    end component;
    signal memtoreg: std_logic;
@@ -61,6 +65,8 @@ architecture struct of mipssingle is
    signal ltez: std_logic; --blez
    signal jal: std_logic;  --jal
    signal lh: std_logic;   --lh
+   signal lb: std_logic;   --lb
+   signal lbhsign: std_logic; --lb/lh
    signal rt0: std_logic; --bltzgez
 begin
    cont: controller port map(instr(31 downto 26), instr(5 downto 0),
@@ -68,13 +74,13 @@ begin
    regdst, regwrite, jump, alucontrol,
    ltez,  --blez
    jal,   --jal
-   lh, rt0);   --lh
+   lh, lb, lbhsign, rt0);   --lh
    dp: datapath port map(clk, reset, memtoreg, pcsrc, alusrc, regdst,
    regwrite, jump, alucontrol, zero, pc, instr,
    aluresult, writedata, readdata,
    ltez,   --blez
    jal,    --jal
-   lh, rt0);    --lh
+   lh, lb, lbhsign, rt0);    --lh
 end;
 
 
@@ -92,6 +98,8 @@ entity controller is -- single cycle control decoder
    ltez:               inout std_logic;                    --blez
    jal:                out std_logic;                    --jal
    lh:                 out std_logic; --lh
+   lb:                 out std_logic; --lb
+   lbhsign:            out std_logic; --lb/lh
    rt0:                in std_logic);                   --bltzgez
 end;
 
@@ -111,7 +119,9 @@ architecture struct of controller is
    bgtz:			   out std_logic; --bgtz
    bltzgez:            out std_logic; --blezgtz
    jal:                out std_logic;  --jal
-   lh:                 out std_logic); --lh
+   lh:                 out std_logic;  --lh
+   lb:                 out std_logic;  --lb
+   lbhsign:            out std_logic); --lb/lh
    end component;
    component aludec
    port(funct:      in  std_logic_vector(5 downto 0);
@@ -129,7 +139,7 @@ architecture struct of controller is
 begin
    md: maindec port map(op, memtoreg, memwrite, beq, bne,
    alusrc, regdst, regwrite, jump, aluop,
-   blez, bgtz, bltzgez, jal, lh);  --blez, jal, lh
+   blez, bgtz, bltzgez, jal, lh, lb, lbhsign);  --blez, jal, lh, lb
    ad: aludec port map(funct, aluop, alucontrol);
    
    bltz <= bltzgez and (not rt0);
@@ -158,36 +168,43 @@ entity maindec is -- main control decoder
    bgtz:               out std_logic;  --bgtz
    bltzgez:            out std_logic;  --bltzgez
    jal:                out std_logic;  --jal
-   lh:                 out std_logic); --lh
+   lh:                 out std_logic;  --lh
+   lb:                 out std_logic;  --lb
+   lbhsign:            out std_logic); --lb/lh sign extend
 end;
 
 architecture behave of maindec is
-  -- increase number of control signals for lui, blez, jal, lh
-   signal controls: std_logic_vector(17 downto 0);
+  -- increase number of control signals for lui, blez, jal, lh, lb
+   signal controls: std_logic_vector(19 downto 0);
 begin
   process(op) begin
      case op is
-        when "000000" => controls <= "000101000000010000"; --rtype
-        when "100011" => controls <= "000100010010000000"; --lw
-        when "101011" => controls <= "000000010100000000"; --sw
-        when "000100" => controls <= "000000001000001000"; --beq
-        when "000101" => controls <= "010000000000001000"; --bne
-        when "000001" => controls <= "100000000000001000"; --bltzgez
-        when "001000" => controls <= "000100010000000000"; --addi
-        when "001001" => controls <= "000100010000000000"; --addiu
-        when "000010" => controls <= "000000000001000000"; --j
-        when "001010" => controls <= "000100010000011000"; --slti
-        when "001111" => controls <= "000100100000000000"; --lui
-        when "000110" => controls <= "000000000000001100"; --blez
-        when "000111" => controls <= "001000000000001000"; --bgtz
-        when "000011" => controls <= "000110000001000010"; --jal
-        when "100001" => controls <= "000100010010000001"; --lh
-        when "001100" => controls <= "000100010000100000"; --andi
-        when "001110" => controls <= "000100010000111000"; --xori
-        when "001101" => controls <= "000100010000101000"; --ori
-        when others   => controls <= "------------------"; -- illegal op
+        when "100000" => controls <= "11000100010010000000"; --lb
+        when "100100" => controls <= "01000100010010000000"; --lbu
+        when "000000" => controls <= "00000101000000010000"; --rtype
+        when "100011" => controls <= "00000100010010000000"; --lw
+        when "101011" => controls <= "00000000010100000000"; --sw
+        when "000100" => controls <= "00000000001000001000"; --beq
+        when "000101" => controls <= "00010000000000001000"; --bne
+        when "000001" => controls <= "00100000000000001000"; --bltzgez
+        when "001000" => controls <= "00000100010000000000"; --addi
+        when "001001" => controls <= "00000100010000000000"; --addiu
+        when "000010" => controls <= "00000000000001000000"; --j
+        when "001010" => controls <= "00000100010000011000"; --slti
+        when "001111" => controls <= "00000100100000000000"; --lui
+        when "000110" => controls <= "00000000000000001100"; --blez
+        when "000111" => controls <= "00001000000000001000"; --bgtz
+        when "000011" => controls <= "00000110000001000010"; --jal
+        when "100001" => controls <= "10000100010010000001"; --lh
+        when "100101" => controls <= "00000100010010000001"; --lhu
+        when "001100" => controls <= "00000100010000100000"; --andi
+        when "001110" => controls <= "00000100010000111000"; --xori
+        when "001101" => controls <= "00000100010000101000"; --ori
+        when others   => controls <= "--------------------"; -- illegal op
      end case;
   end process;
+  lbhsign  <= controls(19);
+  lb       <= controls(18);
   bltzgez  <= controls(17);
   bne      <= controls(16);
   bgtz     <= controls(15);
@@ -273,6 +290,8 @@ entity datapath is  -- mips datapath
    ltez:              out std_logic;  --blez
    jal:               in  std_logic;  --jal
    lh:                in  std_logic;  --lh
+   lb:                in  std_logic;  --lb
+   lbhsign:           in  std_logic; --lb/lh
    rt0:               out std_logic); --blezgtz
 end;
 
@@ -305,9 +324,20 @@ architecture struct of datapath is
         y: out std_logic_vector(31 downto 0));
    end component;
    component signext
+   port(a: in std_logic_vector(15 downto 0);
+	    y: out std_logic_vector(31 downto 0));
+   end component;
+   component signext16 --lh
    port(a: in  std_logic_vector(15 downto 0);
+        s: in std_logic;
         y: out std_logic_vector(31 downto 0));
    end component;
+   component signext8 is -- lb
+   port(a: in  std_logic_vector(7 downto 0);
+        s: in  std_logic;
+        y: out std_logic_vector(31 downto 0));
+   end component;
+
    component flopr generic(width: integer);
       port(clk, reset: in  std_logic;
            d:          in  std_logic_vector(width-1 downto 0);
@@ -332,6 +362,12 @@ architecture struct of datapath is
            s:          in  std_logic_vector(1 downto 0);
            y:          out std_logic_vector(width-1 downto 0));
    end component;
+   component mux4 is -- lb
+   generic(width: integer);
+   port(d0, d1, d2, d3: in  std_logic_vector(width-1 downto 0);
+        s:          in  std_logic_vector(1 downto 0);
+        y:          out std_logic_vector(width-1 downto 0));
+   end component;
    signal writereg: std_logic_vector(4 downto 0);
    signal pcjump, pcjump_delayed, pcnext, pcnextbr, 
    pcplus4, pcplus8, pcbranch, pcrealbranch:  std_logic_vector(31 downto 0);
@@ -340,7 +376,8 @@ architecture struct of datapath is
    signal srca, srca_delayed, srcb, result: std_logic_vector(31 downto 0);
    signal writeresult: std_logic_vector(31 downto 0); --jal
    signal half: std_logic_vector(15 downto 0); --lh
-   signal signhalf, memdata: std_logic_vector(31 downto 0); --lh
+   signal lbbyte: std_logic_vector(7 downto 0); --lb
+   signal signhalf, signbyte, memdata: std_logic_vector(31 downto 0); --lh/lb
    signal jr, jr_delayed: std_logic; --jr
    signal jump_delayed: std_logic; --j
    signal jal_delayed: std_logic; --jal
@@ -390,11 +427,20 @@ begin
    lhmux1: mux2 generic map(16) port map(readdata(15 downto 0), 
    readdata(31 downto 16), 
    aluresult(1), half); --lh
-   lhse: signext port map(half, signhalf); --lh
-   lhmux2: mux2 generic map(32) port map(readdata, signhalf, 
-   lh, memdata);  --lh
+   lhse: signext16 port map(half, lbhsign, signhalf); --lh
+   
+   -- hardware to support lb
+   lbmux1: mux4 generic map(8) port map(
+			readdata(31 downto 24), readdata(23 downto 16), 
+			readdata(15 downto 8), readdata(7 downto 0),
+			aluresult(1 downto 0), lbbyte); -- lb
+   lbse: signext8 port map(lbbyte, lbhsign, signbyte); --lb
 
-   resmux: mux2 generic map(32) port map(aluresult, memdata,  --lh 
+   -- mux either straight data or 16-bit/8-bit versions of these...
+   lhbmux1: mux3 generic map(32) port map(readdata, signbyte, signhalf, 
+   lh & lb, memdata);  --lh/lb
+
+   resmux: mux2 generic map(32) port map(aluresult, memdata,  --lh/lb
    memtoreg, result);
    se: signext port map(instr(15 downto 0), signimm);
    ue: upimm port map(instr(15 downto 0), upperimm); --lui

@@ -70,6 +70,34 @@ begin
    y <= x"0000" & a when a(15) = '0' else x"ffff" & a; 
 end;
 
+library ieee; use ieee.std_logic_1164.all;
+entity signext16 is -- variable sign extender
+   port(a: in  std_logic_vector(15 downto 0);
+        s: in std_logic;
+        y: out std_logic_vector(31 downto 0));
+end;
+
+architecture behave of signext16 is
+  signal should_sign : std_logic;
+begin
+   should_sign <= '1' when (a(15) = '1') else '0';
+   y <= x"ffff" & a when ((should_sign and s) = '1') else x"0000" & a; 
+end;
+
+library ieee; use ieee.std_logic_1164.all;
+entity signext8 is -- sign extender for 8-bit to 32-bit (lb)
+   port(a: in  std_logic_vector(7 downto 0);
+        s: in std_logic;
+        y: out std_logic_vector(31 downto 0));
+end;
+
+architecture behave of signext8 is
+  signal should_sign : std_logic;
+begin
+   should_sign <= '1' when (a(7) = '1') else '0';
+   y <= x"ffffff" & a when ((should_sign and s) = '1') else x"000000" & a; 
+end;
+
 library ieee; use ieee.std_logic_1164.all;  use ieee.std_logic_arith.all;
 entity flopr is -- flip-flop with synchronous reset
    generic(width: integer);
@@ -170,4 +198,26 @@ begin
      end case;
   end process;
 end;
+
+library ieee; use ieee.std_logic_1164.all;
+entity mux4 is -- four-input multiplexer
+   generic(width: integer);
+   port(d0, d1, d2, d3: in  std_logic_vector(width-1 downto 0);
+        s:          in  std_logic_vector(1 downto 0);
+        y:          out std_logic_vector(width-1 downto 0));
+end;
+
+architecture behave of mux4 is
+begin
+  process(s, d0, d1, d2, d3) begin
+     case s is
+        when "00" =>   y <= d0;
+        when "01" =>   y <= d1;
+        when "10" =>   y <= d2;
+        when "11" =>   y <= d3;
+        when others => y <= d0;
+     end case;
+  end process;
+end;
+
 
