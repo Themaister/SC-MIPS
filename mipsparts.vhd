@@ -89,6 +89,23 @@ begin
   end process;
 end;
 
+library ieee; use ieee.std_logic_1164.all; use ieee.std_logic_arith.all;
+entity floprs is -- boolean flip-flop
+	port (clk, reset: in std_logic;
+			d: in std_logic;
+			q: out std_logic);
+end;
+
+architecture synth of floprs is
+begin
+	process (clk, reset) begin
+		if reset = '1' then q <= '0';
+		elsif rising_edge(clk) then
+			q <= d;
+		end if;
+	end process;
+end;
+
 library ieee; use ieee.std_logic_1164.all;  use ieee.std_logic_arith.all;
 entity flopenr is -- flip-flop with synchronous reset
    generic(width: integer);

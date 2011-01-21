@@ -140,7 +140,7 @@ end process;
  jump_reg <= '1' when (f(3 downto 0) = "1000") else '0';
  jr <= jump_reg;
  can_link <= '0' when (a = x"00000000") else '1';
- link <= jr and can_link;
+ link <= jump_reg and can_link;
  
 
  mul_div_write_op <= f(6);

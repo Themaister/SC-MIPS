@@ -313,6 +313,11 @@ architecture struct of datapath is
            d:          in  std_logic_vector(width-1 downto 0);
            q:          out std_logic_vector(width-1 downto 0));
    end component;
+   component floprs is -- boolean flip-flop
+   port (clk, reset: in std_logic;
+			d: in std_logic;
+			q: out std_logic);
+   end component;
    component mux2 generic(width: integer);
       port(d0, d1: in  std_logic_vector(width-1 downto 0);
            s:      in  std_logic;
@@ -328,29 +333,42 @@ architecture struct of datapath is
            y:          out std_logic_vector(width-1 downto 0));
    end component;
    signal writereg: std_logic_vector(4 downto 0);
-   signal pcjump, pcnext, pcnextbr, 
-   pcplus4, pcbranch, pcrealbranch:  std_logic_vector(31 downto 0);
+   signal pcjump, pcjump_delayed, pcnext, pcnextbr, 
+   pcplus4, pcplus8, pcbranch, pcrealbranch:  std_logic_vector(31 downto 0);
    signal signimm, signimmsh: std_logic_vector(31 downto 0);
    signal upperimm: std_logic_vector(31 downto 0); --lui
-   signal srca, srcb, result: std_logic_vector(31 downto 0);
+   signal srca, srca_delayed, srcb, result: std_logic_vector(31 downto 0);
    signal writeresult: std_logic_vector(31 downto 0); --jal
    signal half: std_logic_vector(15 downto 0); --lh
    signal signhalf, memdata: std_logic_vector(31 downto 0); --lh
-   signal jr: std_logic; --jr
-   signal alu_link: std_logic; --jalr
+   signal jr, jr_delayed: std_logic; --jr
+   signal jump_delayed: std_logic; --j
+   signal jal_delayed: std_logic; --jal
+   signal alu_link, alu_link_delayed: std_logic; --jalr
    signal alu_can_write_reg: std_logic;
+   signal regdst_delayed: std_logic_vector(1 downto 0);
    signal mask_reg: std_logic_vector(4 downto 0); --bltz/bgez
 begin
   -- next pc logic
    pcjump <= pcplus4(31 downto 28) & instr(25 downto 0) & "00";
    pcreg: flopr generic map(32) port map(clk, reset, pcnext, pc);
    pcadd1: adder port map(pc, x"00000004", pcplus4);
+   pcadd_link: adder port map(pc, x"00000008", pcplus8);
    immsh: sl2 port map(signimm, signimmsh);
    pcadd2: adder port map(pcplus4, signimmsh, pcbranch);
    pcbrmux: mux2 generic map(32) port map(pcplus4, pcbranch, 
    pcsrc, pcnextbr);
-   pcmux: mux2 generic map(32) port map(pcnextbr, pcjump, jump, pcrealbranch);
-   pcjumpreg: mux2 generic map(32) port map(pcrealbranch, srca, jr, pcnext);
+   pcmux: mux2 generic map(32) port map(pcnextbr, pcjump_delayed, jump_delayed, pcrealbranch);
+   pcjumpreg: mux2 generic map(32) port map(pcrealbranch, srca_delayed, jr_delayed, pcnext);
+   
+   -- Set up branch delay slots. We don't really need this stuff when doing single cycle,
+   -- but this is what MIPS does it seems :D
+   jump_delayslot: floprs port map(clk, reset, jump, jump_delayed);
+   jr_delayslot: floprs port map(clk, reset, jr, jr_delayed);
+   alu_link_delayslot: floprs port map(clk, reset, alu_link, alu_link_delayed);
+   jal_delayslot: floprs port map(clk, reset, jal, jal_delayed);
+   srca_delayslot: flopr generic map(32) port map(clk, reset, srca, srca_delayed);
+   pcjump_delayslot: flopr generic map(32) port map(clk, reset, pcjump, pcjump_delayed);
 
 
    mask_reg <= "00000" when instr(31 downto 26) = "000001" else instr(20 downto 16);
@@ -360,13 +378,13 @@ begin
    writeresult,  --jal
    srca, writedata);
 
-   -- With branch delay slot later, we need pcplus8 :D
-   ramux: mux2 generic map(32)  port map(result, pcplus4, jal or alu_link, -- Direct JAL or ALU initiated link?
+   ramux: mux2 generic map(32)  port map(result, pcplus8, jal or alu_link, -- Direct JAL or ALU initiated link?
    writeresult);  -- jal
 
+   regdst_delayed <= "10" when ((jal or alu_link) = '1') else regdst; -- jal
    wrmux: mux3 generic map(5) port map(instr(20 downto 16), 
    instr(15 downto 11), "11111", --jal 
-   regdst, writereg);
+   regdst_delayed, writereg);
 
   -- hardware to support lh
    lhmux1: mux2 generic map(16) port map(readdata(15 downto 0), 
