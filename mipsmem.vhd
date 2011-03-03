@@ -15,6 +15,7 @@ use ieee.std_logic_unsigned.all; use ieee.std_logic_arith.all;
 
 entity dmem is -- data memory
    port(clk, we:  in std_logic;
+   wsize: in std_logic_vector(1 downto 0); -- sb, sh
    a, wd:    in std_logic_vector(31 downto 0);
    rd:       out std_logic_vector(31 downto 0);
    switch1, switch2, switch3, switch4: in std_logic_vector(3 downto 0);
@@ -30,7 +31,27 @@ begin
      if clk'event and clk = '1' then
         if we = '1' then
            if (a(7 downto 2) > 3) then
-              mem(conv_integer(a(7 downto 2))) <= wd;
+              if (wsize = "01") then -- sb
+			    case a(1 downto 0) is
+				   when "00" =>
+					mem(conv_integer(a(7 downto 2)))(31 downto 24) <= wd(7 downto 0);
+				   when "01" =>
+					mem(conv_integer(a(7 downto 2)))(23 downto 16) <= wd(7 downto 0);
+				   when "10" => 
+					mem(conv_integer(a(7 downto 2)))(15 downto 8) <= wd(7 downto 0);
+				   when others =>
+				    mem(conv_integer(a(7 downto 2)))(7 downto 0) <= wd(7 downto 0);
+				end case;
+			  elsif (wsize = "10") then
+				case a(1) is
+					when '0' =>
+						mem(conv_integer(a(7 downto 2)))(31 downto 16) <= wd(15 downto 0);
+					when others =>
+						mem(conv_integer(a(7 downto 2)))(15 downto 0) <= wd(15 downto 0);
+				end case;
+              else
+				mem(conv_integer(a(7 downto 2))) <= wd;
+			  end if;
            else
               mem(0) <= x"0000000" & switch1;
               mem(1) <= x"0000000" & switch2;
@@ -63,6 +84,7 @@ entity insmem is -- instruction memory
         );
 end;
 
+-- It is dead, Jim.
 architecture behave of insmem is
    signal addr: std_logic_vector(7 downto 0);
 begin

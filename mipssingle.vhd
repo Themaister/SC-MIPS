@@ -15,6 +15,7 @@ entity mipssingle is -- single cycle mips processor
         pc:                inout std_logic_vector(31 downto 0);
         instr:             in  std_logic_vector(31 downto 0);
         memwrite:          out std_logic;
+        memwrite_size:     out std_logic_vector(1 downto 0);
    aluresult, writedata: inout std_logic_vector(31 downto 0);
    readdata:          in  std_logic_vector(31 downto 0));
 end;
@@ -24,6 +25,7 @@ architecture struct of mipssingle is
       port(op, funct:          in  std_logic_vector(5 downto 0);
            zero:               in  std_logic;
       memtoreg, memwrite: out std_logic;
+      memwrite_size:      out std_logic_vector(1 downto 0);
       pcsrc:              out std_logic;
       alusrc:             out std_logic_vector(1 downto 0); --lui
       regdst:             out std_logic_vector(1 downto 0); --jal
@@ -70,7 +72,7 @@ architecture struct of mipssingle is
    signal rt0: std_logic; --bltzgez
 begin
    cont: controller port map(instr(31 downto 26), instr(5 downto 0),
-   zero, memtoreg, memwrite, pcsrc, alusrc,
+   zero, memtoreg, memwrite, memwrite_size, pcsrc, alusrc,
    regdst, regwrite, jump, alucontrol,
    ltez,  --blez
    jal,   --jal
@@ -89,6 +91,7 @@ entity controller is -- single cycle control decoder
    port(op, funct:          in  std_logic_vector(5 downto 0);
         zero:               in  std_logic;
    memtoreg, memwrite: out std_logic;
+   memwrite_size:      out std_logic_vector(1 downto 0); --sb, sh
    pcsrc:              out std_logic;
    alusrc:             out std_logic_vector(1 downto 0); --lui
    regdst:             out std_logic_vector(1 downto 0); --jal
@@ -108,6 +111,7 @@ architecture struct of controller is
    component maindec
    port(op:                 in  std_logic_vector(5 downto 0);
    memtoreg, memwrite: out std_logic;
+   memwrite_size:      out std_logic_vector(1 downto 0); --sb, sh
    branch:             out std_logic;
    bne:                out std_logic;
    alusrc:             out std_logic_vector(1 downto 0); --lui
@@ -137,7 +141,7 @@ architecture struct of controller is
    
    signal bne: std_logic; --bne
 begin
-   md: maindec port map(op, memtoreg, memwrite, beq, bne,
+   md: maindec port map(op, memtoreg, memwrite, memwrite_size, beq, bne,
    alusrc, regdst, regwrite, jump, aluop,
    blez, bgtz, bltzgez, jal, lh, lb, lbhsign);  --blez, jal, lh, lb
    ad: aludec port map(funct, aluop, alucontrol);
@@ -157,6 +161,7 @@ library ieee; use ieee.std_logic_1164.all;
 entity maindec is -- main control decoder
    port(op:                 in  std_logic_vector(5 downto 0);
    memtoreg, memwrite: out std_logic;
+   memwrite_size:      out std_logic_vector(1 downto 0); --sb, sh
    branch:             out std_logic; -- beq
    bne:				   out std_logic; -- bne
    alusrc:             out std_logic_vector(1 downto 0); --lui
@@ -174,35 +179,39 @@ entity maindec is -- main control decoder
 end;
 
 architecture behave of maindec is
-  -- increase number of control signals for lui, blez, jal, lh, lb
-   signal controls: std_logic_vector(19 downto 0);
+  -- increase number of control signals for lui, blez, jal, lh, lb, sb, sh
+   signal controls: std_logic_vector(21 downto 0);
 begin
   process(op) begin
      case op is
-        when "100000" => controls <= "11000100010010000000"; --lb
-        when "100100" => controls <= "01000100010010000000"; --lbu
-        when "000000" => controls <= "00000101000000010000"; --rtype
-        when "100011" => controls <= "00000100010010000000"; --lw
-        when "101011" => controls <= "00000000010100000000"; --sw
-        when "000100" => controls <= "00000000001000001000"; --beq
-        when "000101" => controls <= "00010000000000001000"; --bne
-        when "000001" => controls <= "00100000000000001000"; --bltzgez
-        when "001000" => controls <= "00000100010000000000"; --addi
-        when "001001" => controls <= "00000100010000000000"; --addiu
-        when "000010" => controls <= "00000000000001000000"; --j
-        when "001010" => controls <= "00000100010000011000"; --slti
-        when "001111" => controls <= "00000100100000000000"; --lui
-        when "000110" => controls <= "00000000000000001100"; --blez
-        when "000111" => controls <= "00001000000000001000"; --bgtz
-        when "000011" => controls <= "00000110000001000010"; --jal
-        when "100001" => controls <= "10000100010010000001"; --lh
-        when "100101" => controls <= "00000100010010000001"; --lhu
-        when "001100" => controls <= "00000100010000100000"; --andi
-        when "001110" => controls <= "00000100010000111000"; --xori
-        when "001101" => controls <= "00000100010000101000"; --ori
-        when others   => controls <= "--------------------"; -- illegal op
+        when "100000" => controls <= "0011000100010010000000"; --lb
+        when "100100" => controls <= "0001000100010010000000"; --lbu
+        when "000000" => controls <= "0000000101000000010000"; --rtype
+        when "100011" => controls <= "0000000100010010000000"; --lw
+        when "101011" => controls <= "1100000000010100000000"; --sw
+        when "101001" => controls <= "1000000000010100000000"; --sh
+        when "101000" => controls <= "0100000000010100000000"; --sb
+        when "000100" => controls <= "0000000000001000001000"; --beq
+        when "000101" => controls <= "0000010000000000001000"; --bne
+        when "000001" => controls <= "0000100000000000001000"; --bltzgez
+        when "001000" => controls <= "0000000100010000000000"; --addi
+        when "001001" => controls <= "0000000100010000000000"; --addiu
+        when "000010" => controls <= "0000000000000001000000"; --j
+        when "001010" => controls <= "0000000100010000011000"; --slti
+        when "001011" => controls <= "0000000100010000011000"; --sltiu
+        when "001111" => controls <= "0000000100100000000000"; --lui
+        when "000110" => controls <= "0000000000000000001100"; --blez
+        when "000111" => controls <= "0000001000000000001000"; --bgtz
+        when "000011" => controls <= "0000000110000001000010"; --jal
+        when "100001" => controls <= "0010000100010010000001"; --lh
+        when "100101" => controls <= "0000000100010010000001"; --lhu
+        when "001100" => controls <= "0000000100010000100000"; --andi
+        when "001110" => controls <= "0000000100010000111000"; --xori
+        when "001101" => controls <= "0000000100010000101000"; --ori
+        when others   => controls <= "----------------------"; -- illegal op
      end case;
   end process;
+  memwrite_size <= controls(21 downto 20);
   lbhsign  <= controls(19);
   lb       <= controls(18);
   bltzgez  <= controls(17);
