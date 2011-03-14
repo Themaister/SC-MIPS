@@ -379,7 +379,8 @@ architecture struct of datapath is
    end component;
    signal writereg: std_logic_vector(4 downto 0);
    signal pcjump, pcjump_delayed, pcnext, pcnextbr, 
-   pcplus4, pcplus8, pcbranch, pcrealbranch:  std_logic_vector(31 downto 0);
+   pcplus4, pcplus8, pcbranch, pcbranch_delayed, pcrealbranch:  std_logic_vector(31 downto 0);
+   signal pcsrc_delayed : std_logic;
    signal signimm, signimmsh: std_logic_vector(31 downto 0);
    signal upperimm: std_logic_vector(31 downto 0); --lui
    signal srca, srca_delayed, srcb, result: std_logic_vector(31 downto 0);
@@ -402,8 +403,8 @@ begin
    pcadd_link: adder port map(pc, x"00000008", pcplus8);
    immsh: sl2 port map(signimm, signimmsh);
    pcadd2: adder port map(pcplus4, signimmsh, pcbranch);
-   pcbrmux: mux2 generic map(32) port map(pcplus4, pcbranch, 
-   pcsrc, pcnextbr);
+   pcbrmux: mux2 generic map(32) port map(pcplus4, pcbranch_delayed, 
+   pcsrc_delayed, pcnextbr);
    pcmux: mux2 generic map(32) port map(pcnextbr, pcjump_delayed, jump_delayed, pcrealbranch);
    pcjumpreg: mux2 generic map(32) port map(pcrealbranch, srca_delayed, jr_delayed, pcnext);
    
@@ -415,6 +416,8 @@ begin
    jal_delayslot: floprs port map(clk, reset, jal, jal_delayed);
    srca_delayslot: flopr generic map(32) port map(clk, reset, srca, srca_delayed);
    pcjump_delayslot: flopr generic map(32) port map(clk, reset, pcjump, pcjump_delayed);
+   pcscr_delayslot: floprs port map(clk, reset, pcsrc, pcsrc_delayed);
+   pcbranch_delayslot: flopr generic map(32) port map(clk, reset, pcbranch, pcbranch_delayed);
 
 
    mask_reg <= "00000" when instr(31 downto 26) = "000001" else instr(20 downto 16);

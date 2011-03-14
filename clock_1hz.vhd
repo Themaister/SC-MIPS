@@ -20,7 +20,7 @@ begin
       if rising_edge(clk) then
       
       
-         if (count = x"000000004") then
+         if (count = x"00000100") then
             if (clk_cnt = "11") then
 				clk_cnt <= "00";
 			else

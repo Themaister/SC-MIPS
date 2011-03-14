@@ -37,6 +37,7 @@ architecture synth of alu is
    signal we_hi, we_lo, read_hi_lo, read_mul_div_reg : std_logic;
    signal alu_res : std_logic_vector(63 downto 0); -- mult :3
    signal output_mul_div : std_logic_vector(31 downto 0);
+   signal divider_quot, divider_rem : std_logic_vector(31 downto 0);
 
    component mul_div_reg is
       port (
@@ -58,6 +59,17 @@ architecture synth of alu is
            s:      in  std_logic;
            y:      out std_logic_vector(width-1 downto 0));
    end component;
+   
+   component divider is
+   port 
+   (
+	 num : in std_logic_vector(31 downto 0);
+	 denom : in std_logic_vector(31 downto 0);
+	 quotient : out std_logic_vector(31 downto 0);
+	 remainder : out std_logic_vector(31 downto 0);
+	 use_unsigned : in std_logic
+   );  
+   end component;
 begin
 
    muldivreg_1 : mul_div_reg 
@@ -70,6 +82,9 @@ begin
    port map (alu_res(31 downto 0), output_mul_div, 
       read_mul_div_reg, alu_out 
    );
+   
+   divider_1 : divider
+   port map (a, b, divider_quot, divider_rem, '1');
 
 
    bout <= (not b) when (f(3) = '1') else b;
@@ -120,10 +135,8 @@ process (f, a, bout, s) begin
            alu_res <=
              a * b;
 
-       --when "1110000" => 
-          --alu_res(31 downto 0) <= a / b;
-          --alu_res(63 downto 32) <= a mod b; doesn't synth, use some dummy stuff :d
-          --alu_res <=  (a mod b) & x"01010101";
+       when "1110000" => 
+          alu_res <= divider_rem & divider_quot;
           
 
        when "1000000" =>
@@ -144,7 +157,7 @@ end process;
  
 
  mul_div_write_op <= f(6);
- we_hi <= f(6) and (f(5) nand f(4));
+ we_hi <= f(6) and (not (f(5) xor f(4)));
  we_lo <= f(6) and (f(5) or f(4));
  read_mul_div_reg <= f(5) or f(4);
  read_hi_lo <= f(4);

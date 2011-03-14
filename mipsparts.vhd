@@ -220,4 +220,22 @@ begin
   end process;
 end;
 
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+entity iabs is
+	generic ( N : integer );
+	port ( a : in std_logic_vector(N-1 downto 0);
+		   aout : out std_logic_vector(N-1 downto 0);
+		   p : in std_logic);
+end;
+
+architecture synth of iabs is
+	signal neg : std_logic_vector(N-1 downto 0);
+begin
+	neg <= (not a) + '1';
+	aout <= a when (a(N-1) xor p) = '1' else neg;
+end;
+
+
 
