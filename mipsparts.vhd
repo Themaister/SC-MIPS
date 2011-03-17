@@ -110,7 +110,7 @@ architecture asynchronous of flopr is
 begin
   process(clk, reset) begin
     --if reset = '1' then  q <= conv_std_logic_vector(0, width);
-     if reset = '1' then q <= x"00400000"; -- Entry point for MIPS
+     if reset = '1' then q <= x"00400000"; -- Our entry point
   elsif clk'event and clk = '1' then
      q <= d;
   end if;

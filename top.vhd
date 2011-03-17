@@ -38,9 +38,10 @@ architecture synth of top is
       wsize: in std_logic_vector(1 downto 0); -- sb, sh
       a, wd:    in  std_logic_vector(31 downto 0);
       rd:       out std_logic_vector(31 downto 0);
-      switch1, switch2, switch3, switch4 : in std_logic_vector(3 downto 0);
-      led1 : out std_logic_vector(7 downto 0);
-      led2 : out std_logic_vector(7 downto 0));
+      switch : in std_logic_vector(15 downto 0);
+      led : out std_logic_vector(15 downto 0);
+      ledg : out std_logic_vector(7 downto 0);
+      hex : out std_logic_vector(31 downto 0));
    end component;
 
    component insmem is
@@ -77,6 +78,8 @@ architecture synth of top is
    signal internal_clk: std_logic;
    signal internal_clk_rom: std_logic;
    signal memwrite_size : std_logic_vector(1 downto 0);
+   
+   signal hex_buf : std_logic_vector(31 downto 0);
 
 begin
   -- instantiate processor and memories
@@ -85,21 +88,23 @@ begin
    writedata, readdata);
    
    dmem1: dmem port map(internal_clk, memwrite, memwrite_size, dataadr, writedata, readdata, 
-   SW(3 downto 0), SW(7 downto 4), SW(11 downto 8), SW(15 downto 12),
-   LEDR(7 downto 0), LEDR(15 downto 8));
+   SW(15 downto 0),
+   LEDR(15 downto 0), LEDG(7 downto 0), hex_buf);
    
    
    -- Remedy weird shit.
    LEDR(17 downto 16) <= "00";
    LCD_ON <= '0';
-   LEDG(8 downto 0) <= "000000000";
+   LEDG(8) <= '0';
    
 
    --insmem1: insmem port map (pc, instr);
    insmem1: insmem_rom port map (pc(11 downto 2), internal_clk_rom, instr); 
 
---ssd_32bit1: ssd_32bit port map(instr, hex0, hex1, hex2, hex3, hex4, hex5, hex6, hex7);
+ssd_32bit1: ssd_32bit port map(hex_buf, hex0, hex1, hex2, hex3, hex4, hex5, hex6, hex7);
 clock_1hz1: clock_1hz port map(CLOCK_50, internal_clk, internal_clk_rom);
+
+   
 
 --ledg <= pc(7 downto 0);
 

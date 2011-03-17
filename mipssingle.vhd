@@ -436,8 +436,8 @@ begin
    regdst_delayed, writereg);
 
   -- hardware to support lh
-   lhmux1: mux2 generic map(16) port map(readdata(15 downto 0), 
-   readdata(31 downto 16), 
+   lhmux1: mux2 generic map(16) port map(readdata(31 downto 16), 
+   readdata(15 downto 0), 
    aluresult(1), half); --lh
    lhse: signext16 port map(half, lbhsign, signhalf); --lh
    
