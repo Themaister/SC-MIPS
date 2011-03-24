@@ -17,7 +17,7 @@ use ieee.std_logic_unsigned.all;
 entity alu is
    port(clk:        in       std_logic; -- for mul/div reg
    a, b:       in       std_logic_vector(31 downto 0);
-   f:          in       std_logic_vector(6 downto 0); --sll - 6 to 4 mul/div
+   f:          in       std_logic_vector(7 downto 0); --sll - 6 to 4 mul/div, 7 unsigned
    shamt:      in       std_logic_vector(4 downto 0); --sll
    alu_out:    out      std_logic_vector(31 downto 0);
    zero:       inout    std_logic;  --blez
@@ -38,6 +38,8 @@ architecture synth of alu is
    signal alu_res : std_logic_vector(63 downto 0); -- mult :3
    signal output_mul_div : std_logic_vector(31 downto 0);
    signal divider_quot, divider_rem : std_logic_vector(31 downto 0);
+   signal mult_res : std_logic_vector(63 downto 0);
+   signal slt : std_logic;
 
    component mul_div_reg is
       port (
@@ -70,8 +72,17 @@ architecture synth of alu is
 	 use_unsigned : in std_logic
    );  
    end component;
+   
+   component mips_multiplier is
+	port (
+		a : in std_logic_vector(31 downto 0);
+		b : in std_logic_vector(31 downto 0);
+		output : out std_logic_vector(63 downto 0);
+		is_unsigned : in std_logic);
+	end component;
 begin
 
+   -- HI/LO register for use with mul/div instructions, and the "never used"-mtlo,mthi.
    muldivreg_1 : mul_div_reg 
    port map (clk, we_hi, we_lo, 
       alu_res(63 downto 32), alu_res(31 downto 0),
@@ -83,8 +94,12 @@ begin
       read_mul_div_reg, alu_out 
    );
    
+   -- single cycle divider megafunction. This is our critical path.
    divider_1 : divider
-   port map (a, b, divider_quot, divider_rem, '1');
+   port map (a, b, divider_quot, divider_rem, f(7));
+   
+   -- single cycle multiplier megafunction. Does signed and unsigned.
+   multiplier_1 : mips_multiplier port map(a, b, mult_res, f(7));
 
 
    bout <= (not b) when (f(3) = '1') else b;
@@ -93,7 +108,7 @@ begin
 
   -- alu function
 process (f, a, bout, s) begin
-   case f is
+   case f(6 downto 0) is
       when "0000000" => 
          alu_res <= x"00000000" & (a and bout);
       when "0000001" => 
@@ -107,8 +122,7 @@ process (f, a, bout, s) begin
       when "0000010" =>
          alu_res <= x"00000000" & s;
       when "0001011" => 
-         alu_res <= 
-           (x"00000000" & "0000000000000000000000000000000" & s(31));
+         alu_res <= conv_std_logic_vector(0, 63) & slt; --slt/sltu
 
      -- shifting
        when "0000100" => 
@@ -132,11 +146,10 @@ process (f, a, bout, s) begin
 
          -- end shifting
        when "1100000" => 
-           alu_res <=
-             a * b;
+           alu_res <= mult_res; -- Multiplier
 
        when "1110000" => 
-          alu_res <= divider_rem & divider_quot;
+          alu_res <= divider_rem & divider_quot; -- Divider
           
 
        when "1000000" =>
@@ -164,6 +177,15 @@ end process;
 
  write_reg <= (jump_reg and not can_link) nor mul_div_write_op;
  ltez <= zero or s(31);  -- blez/bgtz
+ 
+ -- Calculate SLT, if unsigned we have to do some additional checks.
+ process (s(31), f(7), a(31), b(31)) begin
+    if f(7) = '0' then
+		slt <= s(31);
+	else
+		slt <= ((not (a(31) xor b(31))) and s(31)) or (a(31) and (not b(31)));
+	end if;
+ end process;
 
 end;
 

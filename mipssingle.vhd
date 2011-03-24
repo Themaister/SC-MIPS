@@ -31,12 +31,13 @@ architecture struct of mipssingle is
       regdst:             out std_logic_vector(1 downto 0); --jal
       regwrite:           out std_logic;
       jump:               out std_logic;
-      alucontrol:         out std_logic_vector(6 downto 0); --sll
+      alucontrol:         out std_logic_vector(7 downto 0); --sll
       ltez:               inout std_logic;                 --blez
       jal:                out std_logic;                    --jal
       lh:                 out std_logic;                   --lh
       lb:                 out std_logic;                   --lb
       lbhsign:            out std_logic;                   --lb/lh
+      alu_unsigned:       out std_logic;                   --unsigned ops
       rt0:                in std_logic);                    --bltzgez
    end component;
    component datapath
@@ -45,7 +46,7 @@ architecture struct of mipssingle is
       alusrc:            in  std_logic_vector(1 downto 0); --lui
       regdst:            in  std_logic_vector(1 downto 0); --jal
       regwrite, jump:    in  std_logic;
-      alucontrol:        in  std_logic_vector(6 downto 0); --sll
+      alucontrol:        in  std_logic_vector(7 downto 0); --sll
       zero:              inout std_logic;
       pc:                inout std_logic_vector(31 downto 0);
       instr:             in  std_logic_vector(31 downto 0);
@@ -56,6 +57,7 @@ architecture struct of mipssingle is
       lh:                in  std_logic; --lh
       lb:                in  std_logic; --lb
       lbhsign:           in  std_logic; --lb/--lh
+      alu_unsigned:      in std_logic; --unsigned ops
       rt0:               out std_logic); --bltzgez  
    end component;
    signal memtoreg: std_logic;
@@ -63,12 +65,13 @@ architecture struct of mipssingle is
    signal regdst: std_logic_vector(1 downto 0); --jal
    signal regwrite, jump: std_logic;
    signal pcsrc, zero: std_logic;
-   signal alucontrol: std_logic_vector(6 downto 0); --sll
+   signal alucontrol: std_logic_vector(7 downto 0); --sll
    signal ltez: std_logic; --blez
    signal jal: std_logic;  --jal
    signal lh: std_logic;   --lh
    signal lb: std_logic;   --lb
    signal lbhsign: std_logic; --lb/lh
+   signal alu_unsigned: std_logic; --unsigned ops
    signal rt0: std_logic; --bltzgez
 begin
    cont: controller port map(instr(31 downto 26), instr(5 downto 0),
@@ -76,13 +79,13 @@ begin
    regdst, regwrite, jump, alucontrol,
    ltez,  --blez
    jal,   --jal
-   lh, lb, lbhsign, rt0);   --lh
+   lh, lb, lbhsign, alu_unsigned, rt0);   --lh
    dp: datapath port map(clk, reset, memtoreg, pcsrc, alusrc, regdst,
    regwrite, jump, alucontrol, zero, pc, instr,
    aluresult, writedata, readdata,
    ltez,   --blez
    jal,    --jal
-   lh, lb, lbhsign, rt0);    --lh
+   lh, lb, lbhsign, alu_unsigned, rt0);    --lh
 end;
 
 
@@ -97,12 +100,13 @@ entity controller is -- single cycle control decoder
    regdst:             out std_logic_vector(1 downto 0); --jal
    regwrite:           out std_logic;
    jump:               out std_logic;
-   alucontrol:         out std_logic_vector(6 downto 0); --sll
+   alucontrol:         out std_logic_vector(7 downto 0); --sll
    ltez:               inout std_logic;                    --blez
    jal:                out std_logic;                    --jal
    lh:                 out std_logic; --lh
    lb:                 out std_logic; --lb
-   lbhsign:            out std_logic; --lb/lh
+   lbhsign:            out std_logic; --lb/lh;
+   alu_unsigned:       out std_logic; --unsigned ops
    rt0:                in std_logic);                   --bltzgez
 end;
 
@@ -110,27 +114,29 @@ end;
 architecture struct of controller is
    component maindec
    port(op:                 in  std_logic_vector(5 downto 0);
-   memtoreg, memwrite: out std_logic;
-   memwrite_size:      out std_logic_vector(1 downto 0); --sb, sh
-   branch:             out std_logic;
-   bne:                out std_logic;
-   alusrc:             out std_logic_vector(1 downto 0); --lui
-   regdst:             out std_logic_vector(1 downto 0); --jal
-   regwrite:           out std_logic;
-   jump:               out std_logic;
-   aluop:              out std_logic_vector(2 downto 0);
-   blez:               out std_logic;  --blez
-   bgtz:			   out std_logic; --bgtz
-   bltzgez:            out std_logic; --blezgtz
-   jal:                out std_logic;  --jal
-   lh:                 out std_logic;  --lh
-   lb:                 out std_logic;  --lb
-   lbhsign:            out std_logic); --lb/lh
+	   memtoreg, memwrite: out std_logic;
+	   memwrite_size:      out std_logic_vector(1 downto 0); --sb, sh
+	   branch:             out std_logic;
+	   bne:                out std_logic;
+	   alusrc:             out std_logic_vector(1 downto 0); --lui
+	   regdst:             out std_logic_vector(1 downto 0); --jal
+	   regwrite:           out std_logic;
+	   jump:               out std_logic;
+	   aluop:              out std_logic_vector(2 downto 0);
+	   blez:               out std_logic;  --blez
+	   bgtz:			   out std_logic; --bgtz
+	   bltzgez:            out std_logic; --blezgtz
+	   jal:                out std_logic;  --jal
+	   lh:                 out std_logic;  --lh
+	   lb:                 out std_logic;  --lb
+	   lbhsign:            out std_logic; --lb/lh
+	   alu_unsigned:       out std_logic); --unsigned
    end component;
    component aludec
    port(funct:      in  std_logic_vector(5 downto 0);
         aluop:      in  std_logic_vector(2 downto 0);
-        alucontrol: out std_logic_vector(6 downto 0));  --sll
+        alucontrol: out std_logic_vector(7 downto 0);  --sll
+        alu_unsigned: in std_logic);
    end component;
    signal aluop: std_logic_vector(2 downto 0);
    signal beq: std_logic; -- beq
@@ -140,11 +146,12 @@ architecture struct of controller is
    signal bltzgez, bltz, bgez: std_logic; --blezgtz
    
    signal bne: std_logic; --bne
+   signal alu_is_unsigned: std_logic;
 begin
    md: maindec port map(op, memtoreg, memwrite, memwrite_size, beq, bne,
    alusrc, regdst, regwrite, jump, aluop,
-   blez, bgtz, bltzgez, jal, lh, lb, lbhsign);  --blez, jal, lh, lb
-   ad: aludec port map(funct, aluop, alucontrol);
+   blez, bgtz, bltzgez, jal, lh, lb, lbhsign, alu_is_unsigned);  --blez, jal, lh, lb
+   ad: aludec port map(funct, aluop, alucontrol, alu_is_unsigned);
    
    bltz <= bltzgez and (not rt0);
    bgez <= bltzgez and rt0;
@@ -175,42 +182,44 @@ entity maindec is -- main control decoder
    jal:                out std_logic;  --jal
    lh:                 out std_logic;  --lh
    lb:                 out std_logic;  --lb
-   lbhsign:            out std_logic); --lb/lh sign extend
+   lbhsign:            out std_logic; --lb/lh sign extend
+   alu_unsigned:       out std_logic); --unsigned ops
 end;
 
 architecture behave of maindec is
   -- increase number of control signals for lui, blez, jal, lh, lb, sb, sh
-   signal controls: std_logic_vector(21 downto 0);
+   signal controls: std_logic_vector(22 downto 0);
 begin
   process(op) begin
      case op is
-        when "100000" => controls <= "0011000100010010000000"; --lb
-        when "100100" => controls <= "0001000100010010000000"; --lbu
-        when "000000" => controls <= "0000000101000000010000"; --rtype
-        when "100011" => controls <= "0000000100010010000000"; --lw
-        when "101011" => controls <= "1100000000010100000000"; --sw
-        when "101001" => controls <= "1000000000010100000000"; --sh
-        when "101000" => controls <= "0100000000010100000000"; --sb
-        when "000100" => controls <= "0000000000001000001000"; --beq
-        when "000101" => controls <= "0000010000000000001000"; --bne
-        when "000001" => controls <= "0000100000000000001000"; --bltzgez
-        when "001000" => controls <= "0000000100010000000000"; --addi
-        when "001001" => controls <= "0000000100010000000000"; --addiu
-        when "000010" => controls <= "0000000000000001000000"; --j
-        when "001010" => controls <= "0000000100010000011000"; --slti
-        when "001011" => controls <= "0000000100010000011000"; --sltiu
-        when "001111" => controls <= "0000000100100000000000"; --lui
-        when "000110" => controls <= "0000000000000000001100"; --blez
-        when "000111" => controls <= "0000001000000000001000"; --bgtz
-        when "000011" => controls <= "0000000110000001000010"; --jal
-        when "100001" => controls <= "0010000100010010000001"; --lh
-        when "100101" => controls <= "0000000100010010000001"; --lhu
-        when "001100" => controls <= "0000000100010000100000"; --andi
-        when "001110" => controls <= "0000000100010000111000"; --xori
-        when "001101" => controls <= "0000000100010000101000"; --ori
-        when others   => controls <= "----------------------"; -- illegal op
+        when "100000" => controls <= "00011000100010010000000"; --lb
+        when "100100" => controls <= "00001000100010010000000"; --lbu
+        when "000000" => controls <= "00000000101000000010000"; --rtype
+        when "100011" => controls <= "00000000100010010000000"; --lw
+        when "101011" => controls <= "01100000000010100000000"; --sw
+        when "101001" => controls <= "01000000000010100000000"; --sh
+        when "101000" => controls <= "00100000000010100000000"; --sb
+        when "000100" => controls <= "00000000000001000001000"; --beq
+        when "000101" => controls <= "00000010000000000001000"; --bne
+        when "000001" => controls <= "00000100000000000001000"; --bltzgez
+        when "001000" => controls <= "00000000100010000000000"; --addi
+        when "001001" => controls <= "10000000100010000000000"; --addiu
+        when "000010" => controls <= "00000000000000001000000"; --j
+        when "001010" => controls <= "00000000100010000011000"; --slti
+        when "001011" => controls <= "10000000100010000011000"; --sltiu
+        when "001111" => controls <= "00000000100100000000000"; --lui
+        when "000110" => controls <= "00000000000000000001100"; --blez
+        when "000111" => controls <= "00000001000000000001000"; --bgtz
+        when "000011" => controls <= "00000000110000001000010"; --jal
+        when "100001" => controls <= "00010000100010010000001"; --lh
+        when "100101" => controls <= "00000000100010010000001"; --lhu
+        when "001100" => controls <= "00000000100010000100000"; --andi
+        when "001110" => controls <= "00000000100010000111000"; --xori
+        when "001101" => controls <= "00000000100010000101000"; --ori
+        when others   => controls <= "-----------------------"; -- illegal op
      end case;
   end process;
+  alu_unsigned <= controls(22);
   memwrite_size <= controls(21 downto 20);
   lbhsign  <= controls(19);
   lb       <= controls(18);
@@ -234,53 +243,57 @@ library ieee; use ieee.std_logic_1164.all;
 entity aludec is -- alu control decoder
    port(funct:      in  std_logic_vector(5 downto 0);
         aluop:      in  std_logic_vector(2 downto 0);
-        alucontrol: out std_logic_vector(6 downto 0));  --sll
+        alucontrol: out std_logic_vector(7 downto 0);  --sll
+        alu_unsigned: in std_logic);
 end;
 
 architecture behave of aludec is
+   signal l_alucontrol : std_logic_vector(7 downto 0);
 begin
   process(aluop, funct) begin
      case aluop is
-        when "000" => alucontrol <= "0000010"; -- add (for lb/sb/addi)
-        when "001" => alucontrol <= "0001010"; -- sub (for beq)
-        when "011" => alucontrol <= "0001011"; -- slt (for slti)
-        when "100" => alucontrol <= "0000000"; -- andi
-        when "101" => alucontrol <= "0000001"; -- ori
-        when "111" => alucontrol <= "0001001"; -- xori
+        when "000" => l_alucontrol <= "00000010"; -- add (for lb/sb/addi)
+        when "001" => l_alucontrol <= "00001010"; -- sub (for beq)
+        when "011" => l_alucontrol <= "00001011"; -- slt (for slti)
+        when "100" => l_alucontrol <= "00000000"; -- andi
+        when "101" => l_alucontrol <= "00000001"; -- ori
+        when "111" => l_alucontrol <= "00001001"; -- xori
         when others => case funct is         -- r-type instructions
-           when "100000" => alucontrol <= "0000010"; -- add
-           when "100001" => alucontrol <= "0000010"; -- addu
-           when "100010" => alucontrol <= "0001010"; -- sub
-           when "100011" => alucontrol <= "0001010"; -- subu
-           when "100100" => alucontrol <= "0000000"; -- and
-           when "100101" => alucontrol <= "0000001"; -- or
-           when "100110" => alucontrol <= "0001001"; -- xor
-           when "100111" => alucontrol <= "0001111"; -- nor
-           when "101010" => alucontrol <= "0001011"; -- slt
+           when "100000" => l_alucontrol <= "00000010"; -- add
+           when "100001" => l_alucontrol <= "10000010"; -- addu
+           when "100010" => l_alucontrol <= "00001010"; -- sub
+           when "100011" => l_alucontrol <= "10001010"; -- subu
+           when "100100" => l_alucontrol <= "00000000"; -- and
+           when "100101" => l_alucontrol <= "00000001"; -- or
+           when "100110" => l_alucontrol <= "00001001"; -- xor
+           when "100111" => l_alucontrol <= "00001111"; -- nor
+           when "101010" => l_alucontrol <= "00001011"; -- slt
+           when "101011" => l_alucontrol <= "10001011"; -- sltu
                                                      -- shifting
-           when "000000" => alucontrol <= "0000100"; -- sll
-           when "000010" => alucontrol <= "0000101"; -- srl
-           when "000011" => alucontrol <= "0000110"; -- sra
-           when "000100" => alucontrol <= "0001100"; -- sllv
-           when "000110" => alucontrol <= "0001101"; -- srlv
-           when "000111" => alucontrol <= "0001110"; -- srav
+           when "000000" => l_alucontrol <= "00000100"; -- sll
+           when "000010" => l_alucontrol <= "00000101"; -- srl
+           when "000011" => l_alucontrol <= "00000110"; -- sra
+           when "000100" => l_alucontrol <= "00001100"; -- sllv
+           when "000110" => l_alucontrol <= "00001101"; -- srlv
+           when "000111" => l_alucontrol <= "00001110"; -- srav
                                                      -- end shifting
-           when "001000" => alucontrol <= "0001000"; -- jr
-           when "001001" => alucontrol <= "0001000"; -- jalr, getting advanced here! 
+           when "001000" => l_alucontrol <= "00001000"; -- jr
+           when "001001" => l_alucontrol <= "00001000"; -- jalr, getting advanced here! 
            -- We will deduce if we have to link from value in srcA. Linking to address 0 is undefined.
-           when "010000" => alucontrol <= "0010000"; -- mfhi
-           when "010001" => alucontrol <= "1000000"; -- mthi
-           when "010010" => alucontrol <= "0100000"; -- mflo
-           when "010011" => alucontrol <= "1010000"; -- mtlo
-           when "011000" => alucontrol <= "1100000"; -- mult
-           when "011001" => alucontrol <= "1100000"; -- multu, but we don't care
-           when "011010" => alucontrol <= "1110000"; -- div :d
-           when "011011" => alucontrol <= "1110000"; -- divu, but we don't care
+           when "010000" => l_alucontrol <= "00010000"; -- mfhi
+           when "010001" => l_alucontrol <= "01000000"; -- mthi
+           when "010010" => l_alucontrol <= "00100000"; -- mflo
+           when "010011" => l_alucontrol <= "01010000"; -- mtlo
+           when "011000" => l_alucontrol <= "01100000"; -- mult
+           when "011001" => l_alucontrol <= "11100000"; -- multu, but we don't care (yet)
+           when "011010" => l_alucontrol <= "01110000"; -- div
+           when "011011" => l_alucontrol <= "11110000"; -- divu
            
-        when others   => alucontrol <= "-------"; -- ???
+        when others   => l_alucontrol <= "--------"; -- ???
      end case;
     end case;
  end process;
+ alucontrol <= (alu_unsigned or l_alucontrol(7)) & l_alucontrol(6 downto 0);
 end;
 
 library ieee; use ieee.std_logic_1164.all; use ieee.std_logic_arith.all;
@@ -290,7 +303,7 @@ entity datapath is  -- mips datapath
    alusrc:            in  std_logic_vector(1 downto 0); --lui
    regdst:            in  std_logic_vector(1 downto 0); --jal
    regwrite, jump:    in  std_logic;
-   alucontrol:        in  std_logic_vector(6 downto 0); --sll
+   alucontrol:        in  std_logic_vector(7 downto 0); --sll
    zero:              inout std_logic;
    pc:                inout std_logic_vector(31 downto 0);
    instr:             in  std_logic_vector(31 downto 0);
@@ -301,21 +314,22 @@ entity datapath is  -- mips datapath
    lh:                in  std_logic;  --lh
    lb:                in  std_logic;  --lb
    lbhsign:           in  std_logic; --lb/lh
+   alu_unsigned:      in std_logic;  --unsigned ops
    rt0:               out std_logic); --blezgtz
 end;
 
 architecture struct of datapath is
    component alu
    port(clk: in std_logic;
-   a, b: in     std_logic_vector(31 downto 0);
-   f:    in     std_logic_vector(6 downto 0); --sll - 6-4 mul/div stuff
-   shamt: in    std_logic_vector(4 downto 0); --sll
-   alu_out:    inout std_logic_vector(31 downto 0);
-   zero: inout  std_logic;  --blez
-   ltez: out    std_logic; --blez
-   jr: out std_logic; --jr
-   link: out std_logic; -- jalr
-   write_reg: out std_logic); --write mul/div op or jr 
+	   a, b: in     std_logic_vector(31 downto 0);
+	   f:    in     std_logic_vector(7 downto 0); --sll - 6-4 mul/div stuff
+	   shamt: in    std_logic_vector(4 downto 0); --sll
+	   alu_out:    inout std_logic_vector(31 downto 0);
+	   zero: inout  std_logic;  --blez
+	   ltez: out    std_logic; --blez
+	   jr: out std_logic; --jr
+	   link: out std_logic; -- jalr
+	   write_reg: out std_logic); --write mul/div op or jr 
    end component;
    component regfile
    port(clk:           in  std_logic;
@@ -377,6 +391,7 @@ architecture struct of datapath is
         s:          in  std_logic_vector(1 downto 0);
         y:          out std_logic_vector(width-1 downto 0));
    end component;
+   
    signal writereg: std_logic_vector(4 downto 0);
    signal pcjump, pcjump_delayed, pcnext, pcnextbr, 
    pcplus4, pcplus8, pcbranch, pcbranch_delayed, pcrealbranch:  std_logic_vector(31 downto 0);
@@ -409,7 +424,8 @@ begin
    pcjumpreg: mux2 generic map(32) port map(pcrealbranch, srca_delayed, jr_delayed, pcnext);
    
    -- Set up branch delay slots. We don't really need this stuff when doing single cycle,
-   -- but this is what MIPS does it seems :D
+   -- but this is what MIPS does it seems :D 
+   -- Implemented as simple flip-flops that delay our data for a single cycle.
    jump_delayslot: floprs port map(clk, reset, jump, jump_delayed);
    jr_delayslot: floprs port map(clk, reset, jr, jr_delayed);
    alu_link_delayslot: floprs port map(clk, reset, alu_link, alu_link_delayed);
