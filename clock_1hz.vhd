@@ -24,7 +24,7 @@ begin
 		  count <= 0;
 		  clk_cnt <= "0000001";
       elsif rising_edge(clk) then 
-         if (count = 10) then
+         if (count = 8) then
             clk_cnt <= clk_cnt(5 downto 0) & clk_cnt(6); -- rotate the clk bits
             count <= 0;
          else
