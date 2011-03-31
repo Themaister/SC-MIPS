@@ -30,6 +30,7 @@ end;
 -- Writable MMIO is mapped to 0x005-----
 -- Readable MMIO is mapped to 0x006-----
 -- Generic RAM is mapped to 0x007-----
+-- Globals ROM is mapped to 0x003-----
 
 architecture behave of dmem is
    
@@ -45,6 +46,15 @@ architecture behave of dmem is
 			q		: OUT STD_LOGIC_VECTOR (31 DOWNTO 0)
 		);
 	END COMPONENT;
+	
+	COMPONENT grom IS
+		PORT
+		(
+			address		: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
+			clock		: IN STD_LOGIC  := '1';
+			q		: OUT STD_LOGIC_VECTOR (31 DOWNTO 0)
+		);
+	END COMPONENT;
 
    type ramtype is array (7 downto 0) of std_logic_vector(31 downto 0);
    signal mem_wr: ramtype;
@@ -57,6 +67,8 @@ architecture behave of dmem is
    signal byteena : std_logic_vector(3 downto 0); -- byte-enable buffer.
    signal wd_map : std_logic_vector(31 downto 0); -- Shifted wd_map depending on write mode.
    signal we_map : std_logic; -- Can we write to RAM?
+   
+   signal rd_grom : std_logic_vector(31 downto 0);
 begin
 
   -- Process wsize and figure out what byteenable we need.
@@ -88,6 +100,11 @@ begin
   end process;
   
   altera_ram1 : altera_ram port map(a(11 downto 2), byteena, wd_map, clk(0), clk(1), we_map, rd_ram);
+  grom_1 : grom port map(a(11 downto 2), clk(0) or clk(2), rd_grom); 
+  -- A ROM that holds our global and static data. 
+  -- This will have to be transferred to regular RAM. Had to do this since DE2 cannot handle
+  -- reprogrammable RAM apparently :/
+  -- An ASM routine will transfer from this ROM to RAM in the CRT startup. 
 
   ram_dir <= a(23 downto 20);
 
@@ -125,22 +142,26 @@ begin
   end process;
 
   -- Here we map our writable MMIO buffer to the HW.
-  led <= mem_wr(0)(15 downto 0);
-  ledg <= mem_wr(1)(7 downto 0);
-  hex <= mem_wr(2);
+  process (clk(2)) begin
+     if rising_edge(clk(2)) then
+		  led <= mem_wr(0)(15 downto 0);
+		  ledg <= mem_wr(1)(7 downto 0);
+		  hex <= mem_wr(2);
+     end if;
+  end process;
   
   -- Map readable buffer to rd_rd.
-  rd_rd <= mem_rd(conv_integer(a(4 downto 2)));
+  process(a(4 downto 2)) begin
+	rd_rd <= mem_rd(conv_integer(a(4 downto 2)));
+  end process;
   
   process (ram_dir, rd_ram, rd_rd) begin
 	  case ram_dir is
-			when x"7" =>
-				rd <= rd_ram;
-			when x"6" =>
-				rd <= rd_rd;
-			when others =>
-				rd <= x"00000000";
-	   end case;
+		when x"7" => rd <= rd_ram; -- RAM read
+		when x"6" => rd <= rd_rd; -- Readable MMIO.
+		when x"3" => rd <= rd_grom; -- Globals ROM. Not accessed by regular C/asm code.
+		when others => rd <= x"00000000";
+	  end case;
    end process;
   
 end;
