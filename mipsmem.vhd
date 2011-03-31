@@ -37,7 +37,7 @@ architecture behave of dmem is
    COMPONENT altera_ram IS
 		PORT
 		(
-			address		: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
+			address		: IN STD_LOGIC_VECTOR (10 DOWNTO 0);
 			byteena		: IN STD_LOGIC_VECTOR (3 DOWNTO 0) :=  (OTHERS => '1');
 			data		: IN STD_LOGIC_VECTOR (31 DOWNTO 0);
 			inclock		: IN STD_LOGIC  := '1';
@@ -50,7 +50,7 @@ architecture behave of dmem is
 	COMPONENT grom IS
 		PORT
 		(
-			address		: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
+			address		: IN STD_LOGIC_VECTOR (10 DOWNTO 0);
 			clock		: IN STD_LOGIC  := '1';
 			q		: OUT STD_LOGIC_VECTOR (31 DOWNTO 0)
 		);
@@ -99,8 +99,8 @@ begin
 	end if;
   end process;
   
-  altera_ram1 : altera_ram port map(a(11 downto 2), byteena, wd_map, clk(0), clk(1), we_map, rd_ram);
-  grom_1 : grom port map(a(11 downto 2), clk(0) or clk(2), rd_grom); 
+  altera_ram1 : altera_ram port map(a(12 downto 2), byteena, wd_map, clk(0), clk(1), we_map, rd_ram);
+  grom_1 : grom port map(a(12 downto 2), clk(0) or clk(2), rd_grom); 
   -- A ROM that holds our global and static data. 
   -- This will have to be transferred to regular RAM. Had to do this since DE2 cannot handle
   -- reprogrammable RAM apparently :/

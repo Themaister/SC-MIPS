@@ -42,7 +42,7 @@ USE altera_mf.all;
 ENTITY altera_ram IS
 	PORT
 	(
-		address		: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
+		address		: IN STD_LOGIC_VECTOR (10 DOWNTO 0);
 		byteena		: IN STD_LOGIC_VECTOR (3 DOWNTO 0) :=  (OTHERS => '1');
 		data		: IN STD_LOGIC_VECTOR (31 DOWNTO 0);
 		inclock		: IN STD_LOGIC  := '1';
@@ -80,7 +80,7 @@ ARCHITECTURE SYN OF altera_ram IS
 			clock0	: IN STD_LOGIC ;
 			clock1	: IN STD_LOGIC ;
 			byteena_a	: IN STD_LOGIC_VECTOR (3 DOWNTO 0);
-			address_a	: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
+			address_a	: IN STD_LOGIC_VECTOR (10 DOWNTO 0);
 			q_a	: OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
 			data_a	: IN STD_LOGIC_VECTOR (31 DOWNTO 0)
 	);
@@ -96,12 +96,12 @@ BEGIN
 		clock_enable_output_a => "BYPASS",
 		intended_device_family => "Cyclone II",
 		lpm_type => "altsyncram",
-		numwords_a => 1024,
+		numwords_a => 2048,
 		operation_mode => "SINGLE_PORT",
 		outdata_aclr_a => "NONE",
 		outdata_reg_a => "CLOCK1",
 		power_up_uninitialized => "FALSE",
-		widthad_a => 10,
+		widthad_a => 11,
 		width_a => 32,
 		width_byteena_a => 4
 	)
@@ -142,7 +142,7 @@ END SYN;
 -- Retrieval info: PRIVATE: JTAG_ID STRING "NONE"
 -- Retrieval info: PRIVATE: MAXIMUM_DEPTH NUMERIC "0"
 -- Retrieval info: PRIVATE: MIFfilename STRING ""
--- Retrieval info: PRIVATE: NUMWORDS_A NUMERIC "1024"
+-- Retrieval info: PRIVATE: NUMWORDS_A NUMERIC "2048"
 -- Retrieval info: PRIVATE: RAM_BLOCK_TYPE NUMERIC "0"
 -- Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_PORT_A NUMERIC "3"
 -- Retrieval info: PRIVATE: RegAddr NUMERIC "1"
@@ -152,7 +152,7 @@ END SYN;
 -- Retrieval info: PRIVATE: SingleClock NUMERIC "0"
 -- Retrieval info: PRIVATE: UseDQRAM NUMERIC "1"
 -- Retrieval info: PRIVATE: WRCONTROL_ACLR_A NUMERIC "0"
--- Retrieval info: PRIVATE: WidthAddr NUMERIC "10"
+-- Retrieval info: PRIVATE: WidthAddr NUMERIC "11"
 -- Retrieval info: PRIVATE: WidthData NUMERIC "32"
 -- Retrieval info: PRIVATE: rden NUMERIC "0"
 -- Retrieval info: CONSTANT: BYTE_SIZE NUMERIC "8"
@@ -160,22 +160,22 @@ END SYN;
 -- Retrieval info: CONSTANT: CLOCK_ENABLE_OUTPUT_A STRING "BYPASS"
 -- Retrieval info: CONSTANT: INTENDED_DEVICE_FAMILY STRING "Cyclone II"
 -- Retrieval info: CONSTANT: LPM_TYPE STRING "altsyncram"
--- Retrieval info: CONSTANT: NUMWORDS_A NUMERIC "1024"
+-- Retrieval info: CONSTANT: NUMWORDS_A NUMERIC "2048"
 -- Retrieval info: CONSTANT: OPERATION_MODE STRING "SINGLE_PORT"
 -- Retrieval info: CONSTANT: OUTDATA_ACLR_A STRING "NONE"
 -- Retrieval info: CONSTANT: OUTDATA_REG_A STRING "CLOCK1"
 -- Retrieval info: CONSTANT: POWER_UP_UNINITIALIZED STRING "FALSE"
--- Retrieval info: CONSTANT: WIDTHAD_A NUMERIC "10"
+-- Retrieval info: CONSTANT: WIDTHAD_A NUMERIC "11"
 -- Retrieval info: CONSTANT: WIDTH_A NUMERIC "32"
 -- Retrieval info: CONSTANT: WIDTH_BYTEENA_A NUMERIC "4"
--- Retrieval info: USED_PORT: address 0 0 10 0 INPUT NODEFVAL address[9..0]
+-- Retrieval info: USED_PORT: address 0 0 11 0 INPUT NODEFVAL address[10..0]
 -- Retrieval info: USED_PORT: byteena 0 0 4 0 INPUT VCC byteena[3..0]
 -- Retrieval info: USED_PORT: data 0 0 32 0 INPUT NODEFVAL data[31..0]
 -- Retrieval info: USED_PORT: inclock 0 0 0 0 INPUT VCC inclock
 -- Retrieval info: USED_PORT: outclock 0 0 0 0 INPUT NODEFVAL outclock
 -- Retrieval info: USED_PORT: q 0 0 32 0 OUTPUT NODEFVAL q[31..0]
 -- Retrieval info: USED_PORT: wren 0 0 0 0 INPUT NODEFVAL wren
--- Retrieval info: CONNECT: @address_a 0 0 10 0 address 0 0 10 0
+-- Retrieval info: CONNECT: @address_a 0 0 11 0 address 0 0 11 0
 -- Retrieval info: CONNECT: q 0 0 32 0 @q_a 0 0 32 0
 -- Retrieval info: CONNECT: @byteena_a 0 0 4 0 byteena 0 0 4 0
 -- Retrieval info: CONNECT: @clock0 0 0 0 0 inclock 0 0 0 0

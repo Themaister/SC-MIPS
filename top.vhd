@@ -48,7 +48,7 @@ architecture synth of top is
 	COMPONENT insmem_rom IS
 		PORT
 		(
-			address		: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
+			address		: IN STD_LOGIC_VECTOR (10 DOWNTO 0);
 			clock		: IN STD_LOGIC  := '1';
 			q		: OUT STD_LOGIC_VECTOR (31 DOWNTO 0)
 		);
@@ -97,7 +97,7 @@ begin
    
 
    --insmem1: insmem port map (pc, instr);
-   insmem1: insmem_rom port map (pc(11 downto 2), insmem_clk(0) or insmem_clk(2), instr); 
+   insmem1: insmem_rom port map (pc(12 downto 2), insmem_clk(0) or insmem_clk(2), instr); 
 
 	ssd_32bit1: ssd_32bit port map(hex_buf, hex0, hex1, hex2, hex3, hex4, hex5, hex6, hex7);
 	clock_1hz1: clock_1hz port map(CLOCK_50, not KEY(1), insmem_clk, ram_clk, cpu_clk);
