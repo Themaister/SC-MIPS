@@ -9,12 +9,14 @@
 -- Extensions by Hans-Kristian Arntzen
 --------------------------------------------------
 
-library ieee; use ieee.std_logic_1164.all;
-use std.textio.all;
-use ieee.std_logic_unsigned.all; use ieee.std_logic_arith.all;
+library ieee; 
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all; 
+use ieee.std_logic_arith.all;
 
 entity dmem is -- data memory
-   port(clk, we:  in std_logic;
+   port(clk : in std_logic_vector(2 downto 0); -- 3-stage clock for eventual SRAM.
+   we:  in std_logic;
    wsize: in std_logic_vector(1 downto 0); -- sb, sh
    a, wd:    in std_logic_vector(31 downto 0);
    rd:       out std_logic_vector(31 downto 0);
@@ -24,63 +26,116 @@ entity dmem is -- data memory
    hex : out std_logic_vector(31 downto 0));
 end;
 
+-- This stuff is memory mapped.
+-- Writable MMIO is mapped to 0x005-----
+-- Readable MMIO is mapped to 0x006-----
+-- Generic RAM is mapped to 0x007-----
+
 architecture behave of dmem is
-   type ramtype is array (63 downto 0) of std_logic_vector(31 downto 0);
+   
+   COMPONENT altera_ram IS
+		PORT
+		(
+			address		: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
+			byteena		: IN STD_LOGIC_VECTOR (3 DOWNTO 0) :=  (OTHERS => '1');
+			data		: IN STD_LOGIC_VECTOR (31 DOWNTO 0);
+			inclock		: IN STD_LOGIC  := '1';
+			outclock		: IN STD_LOGIC ;
+			wren		: IN STD_LOGIC ;
+			q		: OUT STD_LOGIC_VECTOR (31 DOWNTO 0)
+		);
+	END COMPONENT;
+
+   type ramtype is array (7 downto 0) of std_logic_vector(31 downto 0);
    signal mem_wr: ramtype;
    signal mem_rd : ramtype; 
    signal ram_dir : std_logic_vector(3 downto 0);
-   signal rd_rd : std_logic_vector(31 downto 0);
-   signal rd_wr : std_logic_vector(31 downto 0);
+   signal rd_rd : std_logic_vector(31 downto 0); -- Our readable MMIO buffer.
+   signal rd_wr : std_logic_vector(31 downto 0); -- Is our writable MMIO buffer.
+   
+   signal rd_ram : std_logic_vector(31 downto 0); -- Readable RAM buffer.
+   signal byteena : std_logic_vector(3 downto 0); -- byte-enable buffer.
+   signal wd_map : std_logic_vector(31 downto 0); -- Shifted wd_map depending on write mode.
+   signal we_map : std_logic; -- Can we write to RAM?
 begin
+
+  -- Process wsize and figure out what byteenable we need.
+  process (wsize, ram_dir) begin
+     if (we = '1') and (ram_dir = x"7") then
+		 if wsize = "01" then -- sb
+			case a(1 downto 0) is
+				when "00" => byteena <= "1000"; wd_map <= wd(7 downto 0) & x"000000";
+				when "01" => byteena <= "0100"; wd_map <= x"00" & wd(7 downto 0) & x"0000";
+				when "10" => byteena <= "0010"; wd_map <= x"0000" & wd(7 downto 0) & x"00";
+				when "11" => byteena <= "0001"; wd_map <= wd;
+				when others => byteena <= "0000";
+			end case;
+		 elsif wsize = "10" then -- sh
+			case a(1) is
+				when '0' => byteena <= "1100"; wd_map <= wd(15 downto 0) & x"0000";
+				when '1' => byteena <= "0011"; wd_map <= wd;
+			end case;
+		 else
+			byteena <= "1111";
+			wd_map <= wd;
+		 end if;
+		 we_map <= '1';
+	else
+		byteena <= "1111";
+		we_map <= '0';
+		wd_map <= conv_std_logic_vector(0, 32);
+	end if;
+  end process;
+  
+  altera_ram1 : altera_ram port map(a(11 downto 2), byteena, wd_map, clk(0), clk(1), we_map, rd_ram);
 
   ram_dir <= a(23 downto 20);
 
-  process(clk) begin
-     if clk'event and clk = '1' then
+  process(clk(0)) begin
+     if rising_edge(clk(0)) then
         if we = '1' then
            if (ram_dir = x"5") then
               if (wsize = "01") then -- sb
 			    case a(1 downto 0) is
 				   when "00" =>
-					mem_wr(conv_integer(a(7 downto 2)))(31 downto 24) <= wd(7 downto 0);
+					mem_wr(conv_integer(a(4 downto 2)))(31 downto 24) <= wd(7 downto 0);
 				   when "01" =>
-					mem_wr(conv_integer(a(7 downto 2)))(23 downto 16) <= wd(7 downto 0);
+					mem_wr(conv_integer(a(4 downto 2)))(23 downto 16) <= wd(7 downto 0);
 				   when "10" => 
-					mem_wr(conv_integer(a(7 downto 2)))(15 downto 8) <= wd(7 downto 0);
+					mem_wr(conv_integer(a(4 downto 2)))(15 downto 8) <= wd(7 downto 0);
 				   when others =>
-				    mem_wr(conv_integer(a(7 downto 2)))(7 downto 0) <= wd(7 downto 0);
+				    mem_wr(conv_integer(a(4 downto 2)))(7 downto 0) <= wd(7 downto 0);
 				end case;
 			  elsif (wsize = "10") then -- sh
 				case a(1) is
 					when '0' =>
-						mem_wr(conv_integer(a(7 downto 2)))(31 downto 16) <= wd(15 downto 0);
+						mem_wr(conv_integer(a(4 downto 2)))(31 downto 16) <= wd(15 downto 0);
 					when others =>
-						mem_wr(conv_integer(a(7 downto 2)))(15 downto 0) <= wd(15 downto 0);
+						mem_wr(conv_integer(a(4 downto 2)))(15 downto 0) <= wd(15 downto 0);
 				end case;
               else
-				mem_wr(conv_integer(a(7 downto 2))) <= wd;
+				mem_wr(conv_integer(a(4 downto 2))) <= wd;
 			  end if; 
            end if; 
         end if;
         
-        mem_rd(0) <= x"0000" & switch;
+        mem_rd(0) <= x"0000" & switch; -- Fills our readable MMIO buffer.
+        
      end if;
-     
-     
   end process;
 
-  --memory mapping? :d
+  -- Here we map our writable MMIO buffer to the HW.
   led <= mem_wr(0)(15 downto 0);
   ledg <= mem_wr(1)(7 downto 0);
   hex <= mem_wr(2);
-
-  rd_wr <= mem_wr(conv_integer(a(7 downto 2)));
-  rd_rd <= mem_rd(conv_integer(a(7 downto 2)));
   
-  process (ram_dir, rd_wr, rd_rd) begin
+  -- Map readable buffer to rd_rd.
+  rd_rd <= mem_rd(conv_integer(a(4 downto 2)));
+  
+  process (ram_dir, rd_ram, rd_rd) begin
 	  case ram_dir is
-			when x"5" =>
-				rd <= rd_wr;
+			when x"7" =>
+				rd <= rd_ram;
 			when x"6" =>
 				rd <= rd_rd;
 			when others =>

@@ -34,7 +34,8 @@ architecture synth of top is
    end component;
 
    component dmem
-      port(clk, we:  in  std_logic;
+      port(clk : in std_logic_vector(2 downto 0); -- 3-stage clock for SRAM.
+      we:  in  std_logic;
       wsize: in std_logic_vector(1 downto 0); -- sb, sh
       a, wd:    in  std_logic_vector(31 downto 0);
       rd:       out std_logic_vector(31 downto 0);
@@ -43,30 +44,26 @@ architecture synth of top is
       ledg : out std_logic_vector(7 downto 0);
       hex : out std_logic_vector(31 downto 0));
    end component;
-
-   component insmem is
-      port (
-              a : in std_logic_vector(31 downto 0);
-              rd : out std_logic_vector(31 downto 0)
-           );
-   end component;
-   
-    COMPONENT insmem_rom IS
-	PORT
-	(
-		address		: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
-		clock		: IN STD_LOGIC  := '1';
-		q		: OUT STD_LOGIC_VECTOR (31 DOWNTO 0)
-	);
+ 
+	COMPONENT insmem_rom IS
+		PORT
+		(
+			address		: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
+			clock		: IN STD_LOGIC  := '1';
+			q		: OUT STD_LOGIC_VECTOR (31 DOWNTO 0)
+		);
 	END COMPONENT;
    
    component clock_1hz is
-      port (
-              clk : in std_logic;
-              clk_out : out std_logic;
-              clk_out_ram : out std_logic
-           );
-   end component;
+	   port (
+			   clk : in std_logic;
+			   reset : in std_logic;
+			   
+			   insmem_clk : out std_logic_vector(2 downto 0);
+			   ram_clk : out std_logic_vector(2 downto 0);
+			   cpu_clk : out std_logic
+			);
+	end component;
 
    
    component ssd_32bit is
@@ -75,8 +72,9 @@ architecture synth of top is
    end component;
 
    signal pc, instr:    std_logic_vector(31 downto 0);
-   signal internal_clk: std_logic;
-   signal internal_clk_rom: std_logic;
+   signal cpu_clk : std_logic;
+   signal ram_clk : std_logic_vector(2 downto 0);
+   signal insmem_clk : std_logic_vector(2 downto 0);
    signal memwrite_size : std_logic_vector(1 downto 0);
    
    signal hex_buf : std_logic_vector(31 downto 0);
@@ -84,10 +82,10 @@ architecture synth of top is
 begin
   -- instantiate processor and memories
    
-   mips1: mipssingle port map(internal_clk, not KEY(1), pc, instr, memwrite, memwrite_size, dataadr, 
+   mips1: mipssingle port map(cpu_clk, not KEY(1), pc, instr, memwrite, memwrite_size, dataadr, 
    writedata, readdata);
    
-   dmem1: dmem port map(internal_clk, memwrite, memwrite_size, dataadr, writedata, readdata, 
+   dmem1: dmem port map(ram_clk, memwrite, memwrite_size, dataadr, writedata, readdata, 
    SW(15 downto 0),
    LEDR(15 downto 0), LEDG(7 downto 0), hex_buf);
    
@@ -99,10 +97,10 @@ begin
    
 
    --insmem1: insmem port map (pc, instr);
-   insmem1: insmem_rom port map (pc(11 downto 2), internal_clk_rom, instr); 
+   insmem1: insmem_rom port map (pc(11 downto 2), insmem_clk(0) or insmem_clk(2), instr); 
 
-ssd_32bit1: ssd_32bit port map(hex_buf, hex0, hex1, hex2, hex3, hex4, hex5, hex6, hex7);
-clock_1hz1: clock_1hz port map(CLOCK_50, internal_clk, internal_clk_rom);
+	ssd_32bit1: ssd_32bit port map(hex_buf, hex0, hex1, hex2, hex3, hex4, hex5, hex6, hex7);
+	clock_1hz1: clock_1hz port map(CLOCK_50, not KEY(1), insmem_clk, ram_clk, cpu_clk);
 
    
 
