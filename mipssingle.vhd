@@ -162,6 +162,8 @@ begin
 			(bgtz and (not ltez)) or
 			(bltz and ltez and (not zero)) or
 			(bgez and (zero or (not ltez)));  --blez
+			
+   alu_unsigned <= alu_is_unsigned;
 end;
 
 library ieee; use ieee.std_logic_1164.all;
@@ -213,9 +215,9 @@ begin
         when "000011" => controls <= "00000000110000001000010"; --jal
         when "100001" => controls <= "00010000100010010000001"; --lh
         when "100101" => controls <= "00000000100010010000001"; --lhu
-        when "001100" => controls <= "00000000100010000100000"; --andi
-        when "001110" => controls <= "00000000100010000111000"; --xori
-        when "001101" => controls <= "00000000100010000101000"; --ori
+        when "001100" => controls <= "10000000100010000100000"; --andi
+        when "001110" => controls <= "10000000100010000111000"; --xori
+        when "001101" => controls <= "10000000100010000101000"; --ori
         when others   => controls <= "-----------------------"; -- illegal op
      end case;
   end process;
@@ -263,10 +265,10 @@ begin
            when "100001" => l_alucontrol <= "10000010"; -- addu
            when "100010" => l_alucontrol <= "00001010"; -- sub
            when "100011" => l_alucontrol <= "10001010"; -- subu
-           when "100100" => l_alucontrol <= "00000000"; -- and
-           when "100101" => l_alucontrol <= "00000001"; -- or
-           when "100110" => l_alucontrol <= "00001001"; -- xor
-           when "100111" => l_alucontrol <= "00001111"; -- nor
+           when "100100" => l_alucontrol <= "10000000"; -- and
+           when "100101" => l_alucontrol <= "10000001"; -- or
+           when "100110" => l_alucontrol <= "10001001"; -- xor
+           when "100111" => l_alucontrol <= "10001111"; -- nor
            when "101010" => l_alucontrol <= "00001011"; -- slt
            when "101011" => l_alucontrol <= "10001011"; -- sltu
                                                      -- shifting
@@ -470,7 +472,7 @@ begin
 
    resmux: mux2 generic map(32) port map(aluresult, memdata,  --lh/lb
    memtoreg, result);
-   se: signext port map(instr(15 downto 0), signimm);
+   se: signext16 port map(instr(15 downto 0), not alu_unsigned, signimm);
    ue: upimm port map(instr(15 downto 0), upperimm); --lui
 
   -- alu logic

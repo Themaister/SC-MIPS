@@ -15,7 +15,8 @@ use ieee.std_logic_unsigned.all;
 use ieee.std_logic_arith.all;
 
 entity dmem is -- data memory
-   port(clk : in std_logic_vector(2 downto 0); -- 3-stage clock for eventual SRAM.
+   port(clk : in std_logic_vector(5 downto 0); -- 6-stage clock for eventual SRAM.
+   reset : in std_logic;
    we:  in std_logic;
    wsize: in std_logic_vector(1 downto 0); -- sb, sh
    a, wd:    in std_logic_vector(31 downto 0);
@@ -23,7 +24,15 @@ entity dmem is -- data memory
    switch : in std_logic_vector(15 downto 0);
    led: out std_logic_vector(15 downto 0);
    ledg : out std_logic_vector(7 downto 0);
-   hex : out std_logic_vector(31 downto 0));
+   hex : out std_logic_vector(31 downto 0);
+   
+	sram_addr : out std_logic_vector(17 downto 0);
+	sram_dq : inout std_logic_vector(15 downto 0);
+	sram_we_n : out std_logic;
+	sram_oe_n : out std_logic;
+	sram_ub_n : out std_logic;
+	sram_lb_n : out std_logic;
+	sram_ce_n : out std_logic);
 end;
 
 -- This stuff is memory mapped.
@@ -34,7 +43,7 @@ end;
 
 architecture behave of dmem is
    
-   COMPONENT altera_ram IS
+    COMPONENT altera_ram IS
 		PORT
 		(
 			address		: IN STD_LOGIC_VECTOR (10 DOWNTO 0);
@@ -47,10 +56,31 @@ architecture behave of dmem is
 		);
 	END COMPONENT;
 	
+	component sram_de2 is
+		port (
+			clk : in std_logic_vector(5 downto 0); -- 6-staged clock
+			reset : in std_logic;
+			a : in std_logic_vector(18 downto 0); -- 512kB RAM
+			byteen : in std_logic_vector(3 downto 0); -- sb/sh
+			wd : in std_logic_vector(31 downto 0); -- Write data
+			we : in std_logic;
+
+			rd : out std_logic_vector(31 downto 0);
+			
+			sram_addr : out std_logic_vector(17 downto 0);
+			sram_dq : inout std_logic_vector(15 downto 0);
+			sram_we_n : out std_logic;
+			sram_oe_n : out std_logic;
+			sram_ub_n : out std_logic;
+			sram_lb_n : out std_logic;
+			sram_ce_n : out std_logic
+		);
+	end component;
+	
 	COMPONENT grom IS
 		PORT
 		(
-			address		: IN STD_LOGIC_VECTOR (10 DOWNTO 0);
+			address		: IN STD_LOGIC_VECTOR (11 DOWNTO 0);
 			clock		: IN STD_LOGIC  := '1';
 			q		: OUT STD_LOGIC_VECTOR (31 DOWNTO 0)
 		);
@@ -99,8 +129,10 @@ begin
 	end if;
   end process;
   
-  altera_ram1 : altera_ram port map(a(12 downto 2), byteena, wd_map, clk(0), clk(1), we_map, rd_ram);
-  grom_1 : grom port map(a(12 downto 2), clk(0) or clk(2), rd_grom); 
+  --altera_ram1 : altera_ram port map(a(12 downto 2), byteena, wd_map, clk(0), clk(1), we_map, rd_ram);
+  sram_de2_1 : sram_de2 port map(clk, reset, a(18 downto 0), byteena, wd_map, we_map, rd_ram, 
+		sram_addr, sram_dq, sram_we_n, sram_oe_n, sram_ub_n, sram_lb_n, sram_ce_n);
+  grom_1 : grom port map(a(13 downto 2), clk(0) or clk(2), rd_grom); 
   -- A ROM that holds our global and static data. 
   -- This will have to be transferred to regular RAM. Had to do this since DE2 cannot handle
   -- reprogrammable RAM apparently :/

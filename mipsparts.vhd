@@ -238,4 +238,36 @@ begin
 end;
 
 
+library altera; 
+use altera.altera_primitives_components.all;
+library ieee;
+use ieee.std_logic_1164.all;
+entity tristate16 is
+	port (
+		input : in std_logic_vector(15 downto 0);
+		oe : in std_logic;
+		output : out std_logic_vector(15 downto 0));
+end;
+
+architecture synth of tristate16 is -- Gief for-loop plx :v
+begin
+	tribuf0 : TRI port map (input(0), oe, output(0));
+	tribuf1 : TRI port map (input(1), oe, output(1));
+	tribuf2 : TRI port map (input(2), oe, output(2));
+	tribuf3 : TRI port map (input(3), oe, output(3));
+	tribuf4 : TRI port map (input(4), oe, output(4));
+	tribuf5 : TRI port map (input(5), oe, output(5));
+	tribuf6 : TRI port map (input(6), oe, output(6));
+	tribuf7 : TRI port map (input(7), oe, output(7));
+	tribuf8 : TRI port map (input(8), oe, output(8));
+	tribuf9 : TRI port map (input(9), oe, output(9));
+	tribuf10 : TRI port map (input(10), oe, output(10));
+	tribuf11 : TRI port map (input(11), oe, output(11));
+	tribuf12 : TRI port map (input(12), oe, output(12));
+	tribuf13 : TRI port map (input(13), oe, output(13));
+	tribuf14 : TRI port map (input(14), oe, output(14));
+	tribuf15 : TRI port map (input(15), oe, output(15));
+end;
+
+
 
