@@ -25,7 +25,7 @@ entity alu is
       f : in std_logic_vector(7 downto 0); -- ALU function. A bit hacky. bits 0-3 for general stuff, 4-6 for mul/div ops, 7 for unsigned op.
       shamt : in std_logic_vector(4 downto 0); -- Shifts
       alu_out : out std_logic_vector(31 downto 0); -- Final result
-      zero : inout std_logic;  -- Branching
+      zero : out std_logic;  -- Branching
       ltez : out std_logic; -- Branching
       jr : out std_logic; -- jr
       link : out std_logic; -- jalr
@@ -45,6 +45,7 @@ architecture synth of alu is
    signal divider_quot, divider_rem : std_logic_vector(31 downto 0);
    signal mult_res : std_logic_vector(63 downto 0);
    signal slt : std_logic;
+   signal zero_tmp : std_logic;
 
    component mul_div_reg is
       port 
@@ -116,7 +117,7 @@ begin
    s <= a + bout + f(3);
 
 
-   process (f, a, b, bout, s) begin
+   process (f, a, b, bout, s, slt, shamt, mult_res, divider_rem, divider_quot) begin
       case f(6 downto 0) is
 
          -- Basic ALU stuff.
@@ -147,7 +148,8 @@ begin
       end case;
    end process;
 
-   zero <= '1' when (alu_res(31 downto 0) = x"00000000") else '0'; -- beq/bne
+   zero_tmp <= '1' when (alu_res(31 downto 0) = x"00000000") else '0'; -- beq/bne
+   zero <= zero_tmp;
    jump_reg <= '1' when (f(3 downto 0) = "1000") else '0';
    jr <= jump_reg;
    can_link <= '0' when (a = x"00000000") else '1';
@@ -161,7 +163,7 @@ begin
    read_hi_lo <= f(4);
 
    write_reg <= (jump_reg and not can_link) nor mul_div_write_op;
-   ltez <= zero or s(31);  -- blez/bgtz
+   ltez <= zero_tmp or s(31);  -- blez/bgtz
 
     -- Calculate SLT, if unsigned we have to do some additional checks.
    process (s(31), f(7), a(31), b(31))

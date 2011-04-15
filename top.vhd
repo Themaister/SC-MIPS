@@ -44,11 +44,11 @@ architecture synth of top is
       port
       (
          clk, reset : in  std_logic;
-         pc : inout std_logic_vector(31 downto 0);
+         pc : out std_logic_vector(31 downto 0);
          instr : in  std_logic_vector(31 downto 0);
          memwrite : out std_logic;
          memwrite_size : out std_logic_vector(1 downto 0);
-         aluresult, writedata : inout std_logic_vector(31 downto 0);
+         aluresult, writedata : out std_logic_vector(31 downto 0);
          readdata : in  std_logic_vector(31 downto 0)
       );
    end component;
@@ -62,8 +62,8 @@ architecture synth of top is
 
          we :  in std_logic;
          wsize : in std_logic_vector(1 downto 0); -- sb, sh
-         a, wd :    in std_logic_vector(31 downto 0);
-         rd :       out std_logic_vector(31 downto 0);
+         a, wd : in std_logic_vector(31 downto 0);
+         rd : out std_logic_vector(31 downto 0);
 
          -- MMIO
          switch : in std_logic_vector(15 downto 0);
