@@ -534,7 +534,7 @@ begin
    pcadd1: adder port map(pc_internal, x"00000004", pcplus4);
    pcadd_link: adder port map(pc_internal, x"00000008", pcplus8);
    immsh: sl2 port map(signimm, signimmsh);
-   pcadd2: adder port map(pcplus4, signimmsh, pcbranch);
+   pcadd2: adder port map(pcplus8, signimmsh, pcbranch);
    pcbrmux: mux2 generic map(32) port map(pcplus4, pcbranch_delayed, 
    pcsrc_delayed, pcnextbr);
    pcmux: mux2 generic map(32) port map(pcnextbr, pcjump_delayed, jump_delayed, pcrealbranch);
